@@ -22,7 +22,10 @@ class ClientResource extends JsonResource
             'phone_number' => $this->client_phonenumber,
             'area' => $this->client_area,
             'city' => $this->client_city,
-            'source_id' => $this->source_id,
+            'source_name' => $this->source ? $this->source->Source_name : null, // Get the source name
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
         ];
     }
+
 }

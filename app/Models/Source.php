@@ -8,8 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 class Source extends Model
 {
     use HasFactory;
+
+    public $timestamps = false;
     
     public function clients(){
-        return $this->belongsTo(client::class);
+        return $this->hasMany(client::class);
     }
 }

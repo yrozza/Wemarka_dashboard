@@ -26,6 +26,6 @@ class client extends Model
     }
 
     public function sources(){
-        return $this->hasMany(source::class); 
+        return $this->belongsTo(source::class); 
     }
 }
