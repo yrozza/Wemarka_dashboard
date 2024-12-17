@@ -59,6 +59,32 @@ class SourceController extends Controller
     /**
      * Display the specified resource.
      */
+    public function showId($id){
+        $source = Source::find($id);
+
+        try {
+            if (!$id){
+                return response()->json([
+                'Message' => "Source not found"
+                ],404);
+            }
+            $source_data = [
+                'id' => $source->id,
+                'Source_name' => $source->Source_name,
+                'Active' => $source->Active ? 'Active' : 'Not Active', // 1 -> Active, 0 -> Not Active
+            ];
+            return response()->json([
+                'data' => $source_data
+            ]);
+        } catch (\Exception $e) {
+            // Catch any unexpected errors and return a 500 response with the error message
+            return response()->json([
+                'message' => 'Internal Server Error',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function show(string $Source_name)
     {
         // Find sources where 'Source_name' contains the provided letter or substring (case-insensitive)
@@ -85,9 +111,17 @@ class SourceController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, Source $source)
     {
-        //
+        $source->update(
+            $request->validate([
+                'Source_name' => 'required|unique:sources,Source_name|max:255',
+                'Active' => 'required|in:0,1',  // Now checking for 0 or 1
+            ])
+        );
+        return response()->json([
+            'message' => 'Updated sucessfully'
+        ]);
     }
 
     /**

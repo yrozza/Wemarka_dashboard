@@ -10,6 +10,11 @@ class Source extends Model
     use HasFactory;
 
     public $timestamps = false;
+
+    protected $fillable = [
+        'Source_name',
+        'Active'
+    ];
     
     public function clients(){
         return $this->hasMany(client::class);
