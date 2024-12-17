@@ -90,7 +90,7 @@ class ShippingController extends Controller
 
     try {
         if($shipping->isEmpty()){
-                return response()->json(['message' => 'No sources found'], 404);
+                return response()->json(['message' => 'No Shipping found'], 404);
         }
     } catch (\Exception $e) {
             return response()->json([
@@ -128,6 +128,7 @@ class ShippingController extends Controller
                 'data' => $shipping
             ]);
         } catch (\Exception $e) {
+            // Catch any unexpected errors and return a 500 response with the error message
             return response()->json([
                 'message' => 'Internal Server Error',
                 'error' => $e->getMessage(),

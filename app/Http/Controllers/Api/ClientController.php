@@ -46,13 +46,13 @@ class ClientController extends Controller
     {
         // Validate incoming request
         $validated = $request->validate([
-            'client_name' => 'required|string|max:255',
+            'client_name' => 'required|string|max:255|unique:clients,client_name',
             'client_age' => 'required|integer',
-            'client_email' => 'required|email',
-            'client_phonenumber' => 'required|string',
+            'client_email' => 'required|email|unique:clients,client_email',
+            'client_phonenumber' => 'required|string|unique:clients,client_phonenumber',
             'client_area' => 'required|string',
             'client_city' => 'required|string',
-            'source_name' => 'required|string', 
+            'source_name' => 'required|string',
         ]);
 
         // Find the source by name (or create if not exists)
@@ -154,21 +154,31 @@ class ClientController extends Controller
      */
     public function update(Request $request, Client $client)
     {
-        $client->update(  
-            $request->validate([
-            'client_name'=>'required|string|max:255',
-            'client_age'=>'required|integer|max:100',
-            'client_area'=>'required|string|max:255',
-            'client_city' => 'required|string|max:255',
-            'client_email' =>'required|email|unique:clients,client_email',
-            'client_phonenumber' =>'required|regex:/^\+?[0-9]{1,4}?[0-9]{7,15}$/|unique:clients,client_phonenumber'
-            ])
+        try {
+            $client->update(
+                $request->validate([
+                    'client_name' => 'required|string|max:255|unique:clients,client_name',
+                    'client_age' => 'required|integer',
+                    'client_email' => 'required|email|unique:clients,client_email',
+                    'client_phonenumber' => 'required|string|unique:clients,client_phonenumber',
+                    'client_area' => 'required|string',
+                    'client_city' => 'required|string',
+                    'source_name' => 'required|string',
+                ])
             );
 
             return response()->json([
-                'message' => 'Updated sucessfully'
+                'message' => 'Updated sucessfully',
+                'data' => $client
             ]);
-        // return new ClientResource($client);
+        } catch (\Exception $e) {
+            // Catch any unexpected errors and return a 500 response with the error message
+            return response()->json([
+                'message' => 'Internal Server Error',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+        
     }
 
     // public function updateSource(Request $request, $id)

@@ -113,15 +113,24 @@ class SourceController extends Controller
      */
     public function update(Request $request, Source $source)
     {
-        $source->update(
-            $request->validate([
-                'Source_name' => 'required|unique:sources,Source_name|max:255',
-                'Active' => 'required|in:0,1',  // Now checking for 0 or 1
-            ])
-        );
-        return response()->json([
-            'message' => 'Updated sucessfully'
-        ]);
+        try {
+            $source->update(
+                $request->validate([
+                    'Source_name' => 'required|unique:sources,Source_name|max:255',
+                    'Active' => 'required|in:0,1',  // Now checking for 0 or 1
+                ])
+            );
+            return response()->json([
+                'message' => 'Updated sucessfully',
+                'data' => $source
+            ]);
+        }catch (\Exception $e) {
+            // Catch any unexpected errors and return a 500 response with the error message
+            return response()->json([
+                'message' => 'Internal Server Error',
+                'error' => $e->getMessage(),
+            ], 500);
+        } 
     }
 
     /**
