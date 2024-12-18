@@ -3,20 +3,42 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\AreaResource;
-use App\Models\Area;
-use Illuminate\Auth\Events\Validated;
+use App\Models\City;
 use Illuminate\Http\Request;
+use App\Models\Area;
 
 class AreaController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
+   
+
     public function index()
     {
-        return AreaResource::collection(Area::all());
+        try {
+            // Get all areas with their related cities
+            $areas = Area::with('city')->get();
+
+            return response()->json([
+                'areas' => $areas->map(function ($area) {
+                    return [
+                        'id' => $area->id,
+                        'name' => $area->Area_name,
+                        'shipping_price' => $area->Price,
+                        'Active' => $area->Active ? 'Active' : 'Not active',
+                        'city_name' => $area->city->City_name ?? 'N/A', // Display city name or 'N/A' if no city found
+                    ];
+                }),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Internal Server Error',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
+
 
     /**
      * Store a newly created resource in storage.
@@ -24,48 +46,58 @@ class AreaController extends Controller
     public function store(Request $request)
     {
         try {
-            $validated= $request->validate([
-            'Area_name' => 'required|string|unique:areas,Area_name|max:255',
-            'Active' => 'required|boolean',
-            'Price' => 'required|numeric|min:0|max:999999.99',
-        ]);
+            // Validate incoming request
+            $validated = $request->validate([
+                'Area_name' => 'required|string|unique:areas,Area_name|max:255',
+                'price' => 'required|numeric',
+                'active' => 'required|boolean',
+                'city_name' => 'required|string|exists:cities,City_name', // Check if the city name exists in cities table
+            ]);
 
-        $area = new Area;
-        $area->Area_name = $validated['Area_name'];
-        $area->Active=$validated['Active'];
-        $area->Price=$validated['Price'];
-        $area->save();
+            // Find the city by name
+            $city = City::where('City_name', $validated['city_name'])->first();
 
-        return response()->json([
-            'Message' => 'Created Sucessfully',
-            'data' => $area
-        ]);
+            // Create a new Area with the found city_id
+            $area = new Area();
+            $area->Area_name = $validated['Area_name'];
+            $area->price = $validated['price'];
+            $area->active = $validated['active'];
+            $area->city_id = $city->id; // Assign the city_id based on the city name
+            $area->save();
+
+            return response()->json([
+                'message' => 'Area created successfully!',
+                'Area' => $area
+            ], 201);
         } catch (\Exception $e) {
-            // Catch any unexpected errors and return a 500 response with the error message
             return response()->json([
                 'message' => 'Internal Server Error',
                 'error' => $e->getMessage(),
             ], 500);
         }
-
-        
     }
+
 
     /**
      * Display the specified resource.
      */
     public function show($id)
     {
-        $area = Area::find($id);
         try {
-            if(!$area){
-                return response()->json([
-                    'Message' => 'Area not found'
-                ],404);
-            }
-            return new AreaResource($area);
+            $Area = Area::with('city')->find($id);
+        if(!$Area){
+            return response()->json([
+                'Message' => 'Area not found'
+            ],404);
+        }
+            return [
+                'id' => $Area->id,
+                'name' => $Area->Area_name,
+                'shipping_price' => $Area->Price,
+                'Active' => $Area->Acive ? 'Active' : 'Not active',
+                'city_name' => $Area->city->City_name ?? 'N/A', // Display city name or 'N/A' if no city found
+            ];
         } catch (\Exception $e) {
-            // Catch any unexpected errors and return a 500 response with the error message
             return response()->json([
                 'message' => 'Internal Server Error',
                 'error' => $e->getMessage(),
@@ -73,70 +105,95 @@ class AreaController extends Controller
         }
     }
 
-    public function showByName(string $Area_name)
+    public function showByName($Area)
     {
         try {
-            
-            $areas = Area::where('Area_name', 'LIKE', "%$Area_name%")->get();
+            // Use get() to retrieve a collection of Areas
+            $areas = Area::with('city')->where('Area_name', 'LIKE', "%$Area%")->get();
 
-            
+            // If no areas are found
             if ($areas->isEmpty()) {
                 return response()->json([
                     'Message' => 'Area not found'
                 ], 404);
             }
 
-            
-            return AreaResource::collection($areas);
+            // Loop through each area in the collection and return the data
+            $result = $areas->map(function ($area) {
+                return [
+                    'id' => $area->id,
+                    'name' => $area->Area_name,
+                    'shipping_price' => $area->Price,
+                    'Active' => $area->Active ? 'Active' : 'Not active',
+                    'city_name' => $area->city->City_name ?? 'N/A', // Display city name or 'N/A' if no city found
+                ];
+            });
+
+            return response()->json($result);
         } catch (\Exception $e) {
-            // Catch any unexpected errors and return a 500 response with the error message
             return response()->json([
                 'message' => 'Internal Server Error',
                 'error' => $e->getMessage(),
             ], 500);
         }
     }
+
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Area $area)
+    public function update(Request $request, $id)
     {
         try {
+            // Validate incoming request
             $validated = $request->validate([
-                'Area_name' => 'required|string|unique:areas,Area_name|max:255',
-                'Active' => 'required|boolean',
-                'Price' => 'required|numeric|min:0|max:999999.99',
+                'Area_name' => 'required|string|max:255|unique:areas,Area_name,' . $id,
+                'price' => 'required|numeric',
+                'active' => 'required|boolean',
+                'city_name' => 'required|string|exists:cities,City_name',
             ]);
 
-            $area->update($validated);
-            if (!$area->wasChanged()) {
-                return response()->json([
-                    'message' => 'No changes made to the shipping record.',
-                ]);
+            // Find the area by ID
+            $area = Area::find($id);
+
+            // Check if the area exists
+            if (!$area) {
+                return response()->json(['message' => 'Area not found'], 404);
             }
+
+            // Find the city by name
+            $city = City::where('City_name', $validated['city_name'])->first();
+
+            // Update the area
+            $area->Area_name = $validated['Area_name'];
+            $area->price = $validated['price'];
+            $area->active = $validated['active'];
+            $area->city_id = $city->id; // Update the city_id based on city name
+            $area->save();
+
+            // Return the updated area
             return response()->json([
-                'Message' => 'Updated Sucessfully',
-                'data' => $area
+                'message' => 'Area updated successfully!',
+                'Area' => $area
             ]);
         } catch (\Exception $e) {
-            // Catch any unexpected errors and return a 500 response with the error message
             return response()->json([
                 'message' => 'Internal Server Error',
                 'error' => $e->getMessage(),
             ], 500);
         }
     }
+
 
     /**
      * Remove the specified resource from storage.
      */
     public function destroy(Area $area)
     {
-        $area->delete();
+    $area->delete();
 
-        return response()->json([
-            'Message' => 'Deleted sucessfully'
-        ]);
+    return response()->json([
+        'Message' => 'Deleted successfully'
+    ]);
     }
 }

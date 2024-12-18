@@ -180,33 +180,7 @@ class ClientController extends Controller
         }
         
     }
-
-    // public function updateSource(Request $request, $id)
-    // {
-    //     // Find the client by ID
-    //     $client = Client::findOrFail($id);
-
-    //     // Validate the incoming request data (ensure 'source_id' is a valid ID if provided)
-    //     $validated = $request->validate([
-    //         'source_id' => 'sometimes|exists:sources,id',  // 'sometimes' allows the field to be optional
-    //     ]);
-        
-    //     // Update only the source_id if it's provided
-    //     if (isset($validated['source_id'])) {
-    //         $client->source_id = $validated['source_id'];
-    //         $client->save();
-    //     }
-
-    //     // Return a success response
-    //     return response()->json([
-    //         'message' => 'Source ID updated successfully!',
-    //         'client' => $client
-    //     ]);
-    // }
-
-    /**
-     * Remove the specified resource from storage.
-     */
+    
     public function destroy(Client $client)
     {
         $client->delete();

@@ -7,10 +7,16 @@ use Illuminate\Database\Eloquent\Model;
 class Area extends Model
 {
     protected $fillable = [
-        'Area_name',
-        'Active',
-        'Price'
+        'name',
+        'shipping_price',
+        'active',
+        'city_id', // The foreign key for the city
     ];
-
-    public $timestamps = false;
+    protected $hidden = [
+        'created_at',
+        'updated_at'
+    ];
+    public function city(){
+        return $this->belongsTo(City::class, 'city_id', 'id');
+    }
 }
