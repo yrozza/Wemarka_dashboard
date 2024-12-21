@@ -184,6 +184,66 @@ class AreaController extends Controller
         }
     }
 
+    // public function updateOnlyOne(Request $request, $id)
+    // {
+    //     try {
+    //         // Find the Area by ID
+    //         $area = Area::find($id);
+    //         if (!$area) {
+    //             return response()->json([
+    //                 'Message' => 'Not found'
+    //             ], 404);
+    //         }
+
+    //         // Check if the request has any data
+    //         if (!$request->all()) {
+    //             return response()->json([
+    //                 'Message' => 'No input provided'
+    //             ], 400);
+    //         }
+
+    //         // Validate the input
+    //         $validated = $request->validate([
+    //             'Area_name' => 'sometimes|string|max:255|unique:areas,Area_name,' . $id,
+    //             'price' => 'sometimes|numeric',
+    //             'active' => 'sometimes|boolean',
+    //             'city_name' => 'sometimes|string|exists:cities,City_name',  // Ensures the city_name exists in the cities table
+    //         ]);
+
+    //         // If city_name is provided, update the foreign key relationship
+    //         if (isset($validated['city_name'])) {
+    //             // Retrieve the City ID based on the provided city_name
+    //             $city = City::where('City_name', $validated['city_name'])->first();
+    //             if ($city) {
+    //                 $area->city_id = $city->id; // Assuming you have a `city_id` column in `Area` table
+    //             } else {
+    //                 return response()->json([
+    //                     'Message' => 'Invalid city_name provided'
+    //                 ], 400);
+    //             }
+    //         }
+
+    //         // Update the record
+    //         $area->update($validated);
+
+    //         // Check if changes were actually made
+    //         if (!$area->wasChanged()) {
+    //             return response()->json([
+    //                 'Message' => 'No changes were detected'
+    //             ], 400);
+    //         }
+
+    //         return response()->json([
+    //             'Message' => 'Updated successfully'
+    //         ]);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'message' => 'Internal Server Error',
+    //             'error' => $e->getMessage(),
+    //         ], 500);
+    //     }
+    // }
+
 
     /**
      * Remove the specified resource from storage.

@@ -108,6 +108,30 @@ class CategoryController extends Controller
         }
     }
 
+    public function updateOnlyOne(Request $request, $id){
+        try {
+            $category = Category::find($id);
+            if (!$category) {
+                return response()->json([
+                    'Message' => 'Not found'
+                ], 404);
+            }
+            $validated = $request->validate([
+                'Category' => 'sometimes|unique:categories,Category|max:255',
+                'Active' => 'sometimes|boolean'
+            ]);
+            $category->update($validated);
+            return response()->json([
+                'Message' => 'Updated successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Internal Server Error',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     /**
      * Remove the specified resource from storage.
      */

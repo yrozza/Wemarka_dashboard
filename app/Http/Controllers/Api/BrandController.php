@@ -128,6 +128,31 @@ class BrandController extends Controller
             ], 500);
         }
     }
+    public function updateOnlyOne(Request $request, $id)
+    {
+        try {
+            $brand = Brand::find($id);
+            if (!$brand) {
+                return response()->json([
+                    'Message' => 'Not found'
+                ], 404);
+            }
+            $validated = $request->validate([
+                'Brand_name' => 'sometimes|unique:brands,Brand_name|max:255',
+                'Company_address' => 'sometimes|string|max:255',
+                'Active' => 'sometimes|boolean'
+            ]);
+            $brand->update($validated);
+            return response()->json([
+                'Message' => 'Updated successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Internal Server Error',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 
     /**
      * Remove the specified resource from storage.

@@ -42,16 +42,23 @@ Route::get('employee/name/{Employee_name}',[EmployeeController::class, 'showByNa
 //////////////Route for Cites
 Route::apiResource('cities',CityController::class);
 Route::get('cities/name/{City_name}',[CityController::class,'showByName']);
+
+
 //////////////Routes for Area 
 Route::apiResource('area',AreaController::class);
 Route::get('area/name/{Area_name}',[AreaController::class,'showByName']);
+Route::patch('area/{area}', [AreaController::class, 'updateOnlyone']);
+
 
 /////////////Routes for brands
 Route::apiResource('brand',BrandController::class);
 Route::get('brand/name/{Brand_name}',[BrandController::class,'showByname']);
+Route::patch('brand/{brand}', [BrandController::class, 'updateOnlyone']);
+
 
 
 
 /////////////////////Routes for Category
 Route::apiResource('category',CategoryController::class);
 Route::get('category/name/{Category}',[CategoryController::class,'showByName']);
+Route::patch('category/{category}',[CategoryController::class,'updateOnlyone']);
