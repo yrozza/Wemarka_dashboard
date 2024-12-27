@@ -7,9 +7,8 @@ use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\ShippingController;
 use App\Http\Controllers\Api\SourceController;
 use App\Http\Controllers\Api\EmployeeController;
-use App\Http\Resources\BrandResource;
-use App\Http\Resources\CityResource;
-use App\Models\Category;
+use App\Http\Controllers\Api\ProductController;
+use App\Http\Resources\ProductResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -62,3 +61,10 @@ Route::patch('brand/{brand}', [BrandController::class, 'updateOnlyone']);
 Route::apiResource('category',CategoryController::class);
 Route::get('category/name/{Category}',[CategoryController::class,'showByName']);
 Route::patch('category/{category}',[CategoryController::class,'updateOnlyone']);
+
+
+
+
+////////////////////Routes for Products
+Route::apiResource('product', ProductController::class);
+Route::get('product/name/{Product_name}', [ProductController::class , 'showByName']);

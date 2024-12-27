@@ -15,6 +15,7 @@ class BrandResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
+            'ID' => $this->id,
             'Brand_name' => $this->Brand_name,
             'Active' => $this->Active ? 'Active' : 'Not active',
             'Company_address' => $this->Company_address

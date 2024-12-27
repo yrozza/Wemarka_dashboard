@@ -12,4 +12,9 @@ class brand extends Model
         'Active',
         'Company_name'
     ];
+
+    public function products()
+    {
+        return $this->hasMany(Product::class);
+    }
 }

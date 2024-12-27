@@ -4,9 +4,22 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class product extends Model
+class Product extends Model
 {
-    public function orders (){
-        return $this->belongsToMany(Order::class)->withPivot('quantity', 'price');
+        protected $fillable = [
+        'product_name',
+        'product_description',
+        'brand_id',
+        'category_id'
+    ];
+    
+    public function brand()
+    {
+        return $this->belongsTo(Brand::class);
+    }
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
     }
 }

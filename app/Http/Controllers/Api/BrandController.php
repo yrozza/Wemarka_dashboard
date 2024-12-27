@@ -38,8 +38,8 @@ class BrandController extends Controller
 
             return response()->json([
                 'Message' => 'Created Successfully',
-                'data' => $brand
-            ]);
+                'data' => new BrandResource($brand)
+            ],201);
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Internal Server Error',
@@ -119,7 +119,8 @@ class BrandController extends Controller
             }
 
             return response()->json([
-                'Message' => 'Update sucessfully'
+                'Message' => 'Update sucessfully',
+                'data' => new BrandResource($brand)
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -138,7 +139,7 @@ class BrandController extends Controller
                 ], 404);
             }
             $validated = $request->validate([
-                'Brand_name' => 'sometimes|unique:brands,Brand_name|max:255',
+                'Brand_name' => 'sometimes|max:255',
                 'Company_address' => 'sometimes|string|max:255',
                 'Active' => 'sometimes|boolean'
             ]);
@@ -163,6 +164,6 @@ class BrandController extends Controller
 
         return response()->json([
             'Message' => 'Deleted sucessfully'
-        ]);
+        ],200);
     }
 }
