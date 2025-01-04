@@ -147,6 +147,53 @@ class ProductController extends Controller
         }
     }
 
+
+
+    public function updateOnlyone(Request $request, $id)
+    {
+        try {
+            // Find the product
+            $product = Product::find($id);
+            if (!$product) {
+                return response()->json([
+                    'Message' => 'Not found'
+                ], 404);
+            }
+
+            // Validate the request data
+            $validated = $request->validate([
+                'Product_name' => 'sometimes|string|unique:products,Product_name|max:255',
+                'Product_description' => 'sometimes|string',
+                'brand_id' => [
+                    'sometimes',
+                    Rule::exists('brands', 'id')->where(function ($query) {
+                        $query->where('active', true);
+                    }),
+                ],
+                'category_id' => [
+                    'sometimes',
+                    Rule::exists('categories', 'id')->where(function ($query) {
+                        $query->where('active', true);
+                    }),
+                ],
+            ]);
+
+            // Update the product with validated data
+            $product->update($validated);
+
+            // Respond with updated product as a resource
+            return new ProductResource($product);
+        } catch (\Exception $e) {
+            // Catch and respond to any unexpected errors
+            return response()->json([
+                'message' => 'Internal Server Error',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+
     /**
      * Remove the specified resource from storage.
      */
