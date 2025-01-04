@@ -8,7 +8,9 @@ use App\Http\Controllers\Api\ShippingController;
 use App\Http\Controllers\Api\SourceController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\VarientController;
 use App\Http\Resources\ProductResource;
+use App\Models\Varient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -69,3 +71,9 @@ Route::patch('category/{category}',[CategoryController::class,'updateOnlyone']);
 Route::apiResource('product', ProductController::class);
 Route::get('product/name/{Product_name}', [ProductController::class , 'showByName']);
 Route::patch('product/{product}', [ProductController::class, 'updateOnlyone']);
+
+
+
+////////////////////Routes for Varients
+Route::apiResource('product.varient',VarientController::class)
+->scoped(['varient' => 'id']);
