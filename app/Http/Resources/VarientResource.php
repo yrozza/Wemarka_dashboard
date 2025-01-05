@@ -14,6 +14,16 @@ class VarientResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        return parent::toArray($request);
+        return [
+            'ID' => $this->id,
+            'Product'=> $this->product ? $this->product->Product_name : null ,
+            'color' => $this->color,
+            'volume' => $this->volume,
+            'varient'=>$this->varient,
+            'Pcode'=>$this->Pcode,
+            'weight'=>$this->weight,
+            'product_image'=>$this->product_image,
+            'stock'=>$this->stock
+        ];
     }
 }
