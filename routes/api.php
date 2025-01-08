@@ -71,9 +71,12 @@ Route::patch('category/{category}',[CategoryController::class,'updateOnlyone']);
 Route::apiResource('product', ProductController::class);
 Route::get('product/name/{Product_name}', [ProductController::class , 'showByName']);
 Route::patch('product/{product}', [ProductController::class, 'updateOnlyone']);
+Route::get('/products-with-variants', [ProductController::class, 'getAllProductsWithVariants']);
+
 
 
 
 ////////////////////Routes for Varients
-Route::apiResource('product.varient',VarientController::class)
-->scoped(['varient' => 'id']);
+    Route::apiResource('product.varient',VarientController::class)
+    ->scoped(['varient' => 'id']);
+    

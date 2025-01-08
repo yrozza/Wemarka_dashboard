@@ -104,6 +104,15 @@ class ProductController extends Controller
     }
 
 
+    public function getAllProductsWithVariants()
+    {
+        // Eager load variants for all products
+        $products = Product::with('variants')->get();
+
+        return response()->json($products);
+    }
+
+
     /**
      * Update the specified resource in storage.
      */
