@@ -79,4 +79,9 @@ Route::get('/products-with-variants', [ProductController::class, 'getAllProducts
 ////////////////////Routes for Varients
     Route::apiResource('product.varient',VarientController::class)
     ->scoped(['varient' => 'id']);
-    
+Route::post('/product/{product}/varient/{varient}/Add-Image', [VarientController::class, 'addImage']);
+Route::patch('/variant/{variantId}/edit-image/{imageId}', [VarientController::class, 'updateImage']);
+
+
+
+

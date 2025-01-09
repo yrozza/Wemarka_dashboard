@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\VarientResource;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use App\Models\Product;
 use App\Models\Image;
 use App\Models\Varient;
@@ -107,24 +110,250 @@ class VarientController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show($product, $variant)
     {
-        //
+        // Find the variant scoped to the product
+        $variant = Varient::where('product_id', $product)
+        ->with('images')
+        ->findOrFail($variant);
+
+        // Return the variant as a JSON response
+        return response()->json($variant, 200);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, Product $product, $id)
     {
-        //
+        try {
+            // Find the variant by its ID and ensure it belongs to the specified product
+            $variant = Varient::where('id', $id)
+                ->where('product_id', $product->id)
+                ->first();
+
+            if (!$variant) {
+                return response()->json(['message' => 'Variant not found or does not belong to the specified product'], 404);
+            }
+
+            // Validate the incoming request data
+            $validatedData = $request->validate([
+                'color' => 'nullable|string|max:100',
+                'volume' => 'nullable|string|max:100',
+                'varient' => 'nullable|string|max:100',
+                'Pcode' => 'nullable|string|max:50',
+                'price' => 'nullable|numeric|regex:/^\d+(\.\d{1,2})?$/',
+                'weight' => 'nullable|numeric|min:0',
+                'stock' => 'nullable|integer|min:10',
+            ]);
+
+            // Prepare the data to update, removing null values
+            $dataToUpdate = array_filter($validatedData);
+
+            // Check if the incoming data is different from the current data
+            $noChangesDetected = true;
+            foreach ($dataToUpdate as $key => $value) {
+                if ($variant->{$key} !== $value) {
+                    $noChangesDetected = false;
+                    break;  // No need to check further if a change is found
+                }
+            }
+
+            // If no changes were detected, return the response
+            if ($noChangesDetected) {
+                return response()->json([
+                    'message' => 'No changes detected',
+                ], 200);
+            }
+
+            // Update the variant fields if there are changes
+            $variant->update($dataToUpdate);
+
+            // Return success response with the updated variant
+            return response()->json([
+                'message' => 'Variant updated successfully!',
+                'variant' => $variant,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Internal Server Error',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
+
+
+
+    public function addImage(Request $request, Product $product, $variantId)
+    {
+        try {
+            // Find the variant and ensure it belongs to the specified product
+            $variant = Varient::where('id', $variantId)
+                ->where('product_id', $product->id)
+                ->first();
+
+            if (!$variant) {
+                return response()->json(['message' => 'Variant not found or does not belong to the specified product'], 404);
+            }
+
+            // Validate incoming request
+            $validatedData = $request->validate([
+                'product_images' => 'required|array',
+                'product_images.*' => 'image|max:2048', // Ensure each image is valid and less than 2MB
+            ]);
+
+            // Process each image
+            $imageUrls = [];
+            foreach ($validatedData['product_images'] as $image) {
+                if ($image->isValid()) {
+                    // Store the image
+                    $imagePath = $image->store('variant_images', 'public');
+
+                    // Add the image record to the database
+                    $imageRecord = new Image();
+                    $imageRecord->varient_id = $variant->id;
+                    $imageRecord->image_url = asset('storage/' . $imagePath);
+                    $imageRecord->save();
+
+                    $imageUrls[] = $imageRecord->image_url;
+                } else {
+                    throw new \Exception("Invalid image provided.");
+                }
+            }
+
+            // Return success response
+            return response()->json([
+                'message' => 'Images added successfully!',
+                'new_image_urls' => $imageUrls,
+            ], 201);
+        } catch (ValidationException $e) {
+            // Handle validation errors
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            // Handle other exceptions
+            return response()->json([
+                'message' => 'An error occurred',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function updateImage(Request $request, $variantId, $imageId)
+    {
+        try {
+            // Log the incoming request data
+            Log::debug('Incoming request:', [
+                'variantId' => $variantId,
+                'imageId' => $imageId,
+                'request_data' => $request->all()
+            ]);
+
+            // Find the variant by variantId
+            $variant = Varient::find($variantId);
+
+            if (!$variant) {
+                return response()->json(['message' => 'Variant not found.'], 404);
+            }
+
+            // Find the specific image by imageId and variantId
+            $imageRecord = Image::where('id', $imageId)
+                ->where('varient_id', $variantId)
+                ->first();
+
+            // Log the image record details
+            Log::debug('Image Record:', [
+                'image_record' => $imageRecord
+            ]);
+
+            if (!$imageRecord) {
+                return response()->json(['message' => 'Image not found or does not belong to the specified variant.'], 404);
+            }
+
+            // Validate the incoming image
+            $validatedData = $request->validate([
+                'product_image' => 'required|image|max:2048', // Ensure the file is valid and <= 2MB
+            ]);
+
+            // Check if the file exists in the request
+            if (!$request->hasFile('product_image')) {
+                return response()->json(['message' => 'No file uploaded.'], 400);
+            }
+
+            // Process the new image
+            $newImage = $validatedData['product_image'];
+
+            if ($newImage->isValid()) {
+                // Log the file path and status
+                Log::debug('File is valid. Processing image.', [
+                    'new_image_name' => $newImage->getClientOriginalName(),
+                    'new_image_mime' => $newImage->getMimeType()
+                ]);
+
+                // Delete the old image file from storage
+                $oldImagePath = str_replace(asset('storage/'), '', $imageRecord->image_url);
+                if (Storage::exists('public/variant_images/' . $oldImagePath)) {
+                    Storage::delete('public/variant_images/' . $oldImagePath);
+                    Log::debug('Old image deleted.', ['old_image_path' => $oldImagePath]);
+                }
+
+                // Store the new image
+                $newImagePath = $newImage->store('variant_images', 'public');
+                $newImageUrl = asset('storage/' . $newImagePath);
+
+                // Update the image record in the database
+                $imageRecord->update(['image_url' => $newImageUrl]);
+
+                // Return success response
+                return response()->json([
+                    'message' => 'Image updated successfully!',
+                    'updated_image_url' => $newImageUrl,
+                ], 200);
+            } else {
+                return response()->json(['message' => 'Invalid image provided.'], 422);
+            }
+        } catch (\Exception $e) {
+            // Handle other exceptions and log the error message
+            Log::error('An error occurred while updating the image:', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'An error occurred while updating the image.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy($product, $variant)
     {
-        //
+        // Find the variant scoped to the product
+        $variant = Varient::where('product_id', $product)->findOrFail($variant);
+
+        // Delete the variant (cascading deletes will handle related images)
+        $variant->delete();
+
+        // Return a response
+        return response()->json(['message' => 'Variant deleted successfully'], 200);
     }
 }
