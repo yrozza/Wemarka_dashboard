@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\SourceController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\VarientController;
+use App\Http\Controllers\Api\ImageController;
 use App\Http\Resources\ProductResource;
 use App\Models\Varient;
 use Illuminate\Http\Request;
@@ -48,7 +49,7 @@ Route::get('cities/name/{City_name}',[CityController::class,'showByName']);
 //////////////Routes for Area 
 Route::apiResource('area',AreaController::class);
 Route::get('area/name/{Area_name}',[AreaController::class,'showByName']);
-Route::patch('area/{area}', [AreaController::class, 'updateOnlyone']);
+// Route::patch('area/{area}', [AreaController::class, 'updateOnlyone']);
 
 
 /////////////Routes for brands
@@ -81,6 +82,15 @@ Route::get('/products-with-variants', [ProductController::class, 'getAllProducts
     ->scoped(['varient' => 'id']);
 Route::post('/product/{product}/varient/{varient}/Add-Image', [VarientController::class, 'addImage']);
 Route::patch('/variant/{variantId}/edit-image/{imageId}', [VarientController::class, 'updateImage']);
+
+
+
+////////////////////Routes for images
+Route::apiResource('products.variants.images', ImageController::class)
+->scoped([
+    'variant' => 'id',
+    'image' => 'id', // Optional, ensures the `image` route uses `id` for lookup
+]);
 
 
 

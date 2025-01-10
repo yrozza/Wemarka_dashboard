@@ -241,6 +241,27 @@ class VarientController extends Controller
         }
     }
 
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy($product, $variant)
+    {
+        // Find the variant scoped to the product
+        $variant = Varient::where('product_id', $product)->find($variant);
+
+        if (!$variant) {
+            return response()->json([
+                'message' => 'Variant not found for the specified product , check your product or varient ID'
+            ], 404);
+        }
+
+        // Delete the variant (cascading deletes will handle related images)
+        $variant->delete();
+
+        // Return a response
+        return response()->json(['message' => 'Variant deleted successfully'], 200);
+    }
+
     public function updateImage(Request $request, $variantId, $imageId)
     {
         try {
@@ -274,7 +295,7 @@ class VarientController extends Controller
 
             // Validate the incoming image
             $validatedData = $request->validate([
-                'product_image' => 'required|image|max:2048', // Ensure the file is valid and <= 2MB
+                'image' => 'required|image|max:2048', // Ensure the file is valid and <= 2MB
             ]);
 
             // Check if the file exists in the request
@@ -326,34 +347,8 @@ class VarientController extends Controller
             ], 500);
         }
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy($product, $variant)
-    {
-        // Find the variant scoped to the product
-        $variant = Varient::where('product_id', $product)->findOrFail($variant);
-
-        // Delete the variant (cascading deletes will handle related images)
-        $variant->delete();
-
-        // Return a response
-        return response()->json(['message' => 'Variant deleted successfully'], 200);
-    }
 }
+
+
+
+
