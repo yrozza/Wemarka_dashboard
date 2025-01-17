@@ -18,9 +18,12 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'name',
+        'first_name',
+        'last_name',
         'email',
+        'phone_number',
         'password',
+        'role',
     ];
 
     /**
@@ -45,4 +48,19 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    // app/Models/User.php
+
+    public static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($user) {
+            // Ensure a default role if none is provided
+            if (empty($user->role)) {
+                $user->role = 'employee'; // Default role
+            }
+        });
+    }
+
 }
