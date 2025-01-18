@@ -2,15 +2,14 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;  // Add this import
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, HasApiTokens;  // Add HasApiTokens here
 
     /**
      * The attributes that are mass assignable.
@@ -37,7 +36,7 @@ class User extends Authenticatable
     ];
 
     /**
-     * Get the attributes that should be cast.
+     * The attributes that should be cast.
      *
      * @return array<string, string>
      */
@@ -49,8 +48,9 @@ class User extends Authenticatable
         ];
     }
 
-    // app/Models/User.php
-
+    /**
+     * Handle the model's "creating" event to set a default role if none is provided.
+     */
     public static function boot()
     {
         parent::boot();
@@ -62,5 +62,4 @@ class User extends Authenticatable
             }
         });
     }
-
 }

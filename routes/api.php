@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\AreaController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BrandController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CityController;
@@ -12,8 +14,6 @@ use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\VarientController;
 use App\Http\Controllers\Api\ImageController;
-use App\Http\Controllers\Auth\AuthenticatedSessionController;
-use App\Http\Controllers\Auth\RegisteredUserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -96,12 +96,16 @@ Route::apiResource('products.variants.images', ImageController::class)
 
 
 
-Route::middleware(['auth', 'admin'])->group(function () {
-    Route::get('/admin/dashboard', [AdminController::class, 'dashboard']);
-    Route::post('/admin/create-user', [AdminController::class, 'createUser']);
-    Route::delete('/admin/delete-user/{id}', [AdminController::class, 'deleteUser']);
-});
+// Route::middleware(['auth', 'admin'])->group(function () {
+//     Route::get('/admin/dashboard', [AdminController::class, 'dashboard']);
+//     Route::post('/admin/create-user', [AdminController::class, 'createUser']);
+//     Route::delete('/admin/delete-user/{id}', [AdminController::class, 'deleteUser']);
+// });
 
 
-Route::post('/register', [RegisteredUserController::class, 'store']);
+
+
+Route::post('register', [AuthController::class, 'register']);
+Route::post('login', [AuthController::class, 'login']);
+Route::middleware('auth:sanctum')->get('user', [AuthController::class, 'user']);
 
