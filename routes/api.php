@@ -5,6 +5,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BrandController;
+use App\Http\Controllers\Api\EmailController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CityController;
 use App\Http\Controllers\Api\ClientController;
@@ -103,9 +104,24 @@ Route::apiResource('products.variants.images', ImageController::class)
 // });
 
 
-
+////////////////////////////////////////Routes for authentication
 
 Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
-Route::middleware('auth:sanctum')->get('user', [AuthController::class, 'user']);
+Route::middleware('auth:sanctum')->get('/user', [AuthController::class, 'getUser']);
+
+
+
+
+
+
+Route::get('email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])->name('verification.verify');
+Route::middleware(['auth:sanctum', 'verified'])->get('/user', function (Request $request) {
+    return response()->json($request->user());
+});
+
+
+// Route::post('send-email', [EmailController::class, 'sendEmail']);
+
+// Route::post('email/verify/send',[EmailController::class, 'sendEmail']);
 
