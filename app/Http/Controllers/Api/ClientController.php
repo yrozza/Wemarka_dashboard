@@ -29,6 +29,7 @@ class ClientController extends Controller
             'clients.client_area',
             'clients.client_city',
             'sources.Source_name', // Select the 'Source_name' from the sources table
+            'clients.source_link', // Select the 'source_link' from the clients table
             'clients.created_at',
             'clients.updated_at'
         )
@@ -37,6 +38,7 @@ class ClientController extends Controller
         // Return the response with the data
         return response()->json($clients);
     }
+
 
 
     /**
@@ -53,6 +55,7 @@ class ClientController extends Controller
             'client_area' => 'required|string',
             'client_city' => 'required|string',
             'source_name' => 'required|string',
+            'source_link' => 'nullable|url', // Validate source_link as a URL
         ]);
 
         // Find the source by name (or create if not exists)
@@ -62,7 +65,7 @@ class ClientController extends Controller
             return response()->json(['message' => 'Source not found'], 404);
         }
 
-        // Create the client record with the source_id
+        // Create the client record with the source_id and source_link
         $client = new Client();
         $client->client_name = $validated['client_name'];
         $client->client_age = $validated['client_age'];
@@ -71,12 +74,12 @@ class ClientController extends Controller
         $client->client_area = $validated['client_area'];
         $client->client_city = $validated['client_city'];
         $client->source_id = $source->id; // Assign the source_id
+        $client->source_link = $validated['source_link']; // Assign the source_link
         $client->save();
 
         // Return the created client with the associated source_name
         return response()->json([
             'message' => 'Client created successfully!',
-            // 'data' => new ClientResource($client)
         ], 201);
     }
 
@@ -90,19 +93,20 @@ class ClientController extends Controller
     {
         // Use Query Builder to fetch the data with a JOIN on the 'sources' table
         $client = DB::table('clients')
-            ->leftJoin('sources', 'clients.source_id', '=', 'sources.id') // Join the 'sources' table
-            ->select(
-                'clients.id',
-                'clients.client_name',
-                'clients.client_age',
-                'clients.client_email',
-                'clients.client_phonenumber',
-                'clients.client_area',
-                'clients.client_city',
-                'sources.Source_name', // Select the 'Source_name' from the sources table
-                'clients.created_at',
-                'clients.updated_at'
-            )
+        ->leftJoin('sources', 'clients.source_id', '=', 'sources.id') // Join the 'sources' table
+        ->select(
+            'clients.id',
+            'clients.client_name',
+            'clients.client_age',
+            'clients.client_email',
+            'clients.client_phonenumber',
+            'clients.client_area',
+            'clients.client_city',
+            'sources.Source_name', // Select the 'Source_name' from the sources table
+            'clients.source_link', // Select the 'source_link' from the clients table
+            'clients.created_at',
+            'clients.updated_at'
+        )
             ->where('clients.client_name', 'LIKE', "%$client_name%") // Search for client name using LIKE
             ->get(); // Get all matching records
 
@@ -164,11 +168,12 @@ class ClientController extends Controller
                     'client_area' => 'required|string',
                     'client_city' => 'required|string',
                     'source_name' => 'required|string',
+                    'source_link' => 'nullable|url', // Validate source_link as a URL
                 ])
             );
 
             return response()->json([
-                'message' => 'Updated sucessfully',
+                'message' => 'Updated successfully',
                 'data' => $client
             ]);
         } catch (\Exception $e) {
@@ -178,7 +183,6 @@ class ClientController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
-        
     }
     
     public function destroy(Client $client)

@@ -97,14 +97,15 @@ Route::apiResource('products.variants.images', ImageController::class)
 
 
 
+
+
+////////////////////////////////////////Routes for authentication
+
 // Route::middleware(['auth', 'admin'])->group(function () {
 //     Route::get('/admin/dashboard', [AdminController::class, 'dashboard']);
 //     Route::post('/admin/create-user', [AdminController::class, 'createUser']);
 //     Route::delete('/admin/delete-user/{id}', [AdminController::class, 'deleteUser']);
 // });
-
-
-////////////////////////////////////////Routes for authentication
 
 Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);

@@ -20,6 +20,11 @@ class client extends Model
         'source_id'
     ];
 
+    public function carts()
+    {
+        return $this->hasMany(Cart::class);
+    }
+
     public function orders()
     {
         return $this->hasMany(Order::class); // Client has many orders

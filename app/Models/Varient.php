@@ -27,4 +27,15 @@ class Varient extends Model
     {
         return $this->hasMany(Image::class);
     }
+
+    public function cartItems()
+    {
+        return $this->hasMany(CartItem::class);
+    }
+
+    // One Variant can be part of many OrderItems
+    public function orderItems()
+    {
+        return $this->hasMany(OrderItem::class);
+    }
 }
