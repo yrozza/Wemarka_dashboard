@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 use App\Models\Cart;
+use Illuminate\Support\Facades\DB;
 Use App\Http\Resources\CartResource;
 use App\Models\Varient;
 use App\Http\Controllers\Controller;
@@ -53,58 +54,69 @@ class CartController extends Controller
                 'products.*.quantity' => 'nullable|integer|min:1',
             ]);
 
-            // Find a cart that belongs to the client, where status is 'active', 'checkout', or 'abandoned'
-            $cart = Cart::where('client_id', $validated['client_id'])
-            ->whereIn('status', ['active', 'checkout', 'abandoned'])
-            ->first();
+            // Find a cart for the given client, if exists
+            $cart = DB::table('carts')->where('client_id', $validated['client_id'])->first();
 
             if ($cart) {
-                // If the cart status is 'checkout' or 'abandoned', update its status to 'active'
-                if (in_array($cart->status, ['checkout', 'abandoned'])) {
-                    $cart->update(['status' => 'active']);
+                // If the cart exists, update its status if it's not 'active'
+                if ($cart->status !== 'active') {
+                    DB::table('carts')->where('id', $cart->id)->update(['status' => 'active']);
                 }
             } else {
                 // If no such cart exists, create a new cart with 'active' status
-                $cart = Cart::create([
+                $cartId = DB::table('carts')->insertGetId([
                     'client_id' => $validated['client_id'],
-                    'status' => 'active', // Default status
+                    'status' => 'active',
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ]);
+                $cart = (object) ['id' => $cartId];
             }
 
             // Loop through each product in the products array
             foreach ($validated['products'] as $product) {
-                // Retrieve the variant from the database using variant_id
-                $variant = Varient::findOrFail($product['varient_id']);
-
-                // Calculate the total price for the item
-                $totalPrice = $variant->price * ($product['quantity'] ?? 1);
+                // Retrieve the variant price using the variant_id from the variants table
+                $variant = DB::table('varients')->where('id', $product['varient_id'])->first();
+                $calculatedTotalPrice = $variant->price * ($product['quantity'] ?? 1);
 
                 // Check if the variant is already in the cart
-                $cartItem = $cart->cartItems()->where('varient_id', $product['varient_id'])->first();
+                $cartItem = DB::table('cart_items')
+                ->where('cart_id', $cart->id)
+                    ->where('varient_id', $product['varient_id'])
+                    ->first();
 
                 if ($cartItem) {
                     // If the variant is already in the cart, update the quantity and total price
-                    $cartItem->quantity += $product['quantity'] ?? 1;
-                    $cartItem->total_price = $cartItem->quantity * $variant->price;
-                    $cartItem->save();
+                    DB::table('cart_items')
+                    ->where('id', $cartItem->id)
+                        ->update([
+                            'quantity' => $cartItem->quantity + ($product['quantity'] ?? 1),
+                            'total_price' => ($cartItem->quantity + ($product['quantity'] ?? 1)) * $variant->price,
+                            'updated_at' => now(),
+                        ]);
                 } else {
-                    // If the variant is not in the cart, create a new cart item
-                    $cart->cartItems()->create([
+                    // If the variant is not already in the cart, insert a new cart item
+                    DB::table('cart_items')->insert([
+                        'cart_id' => $cart->id,
                         'varient_id' => $product['varient_id'],
                         'quantity' => $product['quantity'] ?? 1,
-                        'price' => $variant->price,  // Set the price from the variant
-                        'total_price' => $totalPrice, // Set the total price for the cart item
+                        'price' => $variant->price,
+                        'total_price' => $calculatedTotalPrice,
+                        'created_at' => now(),
+                        'updated_at' => now(),
                     ]);
                 }
             }
 
-            // Load the cart items and return them in the response along with the cart
-            $cart->load('cartItems');  // Eager load the cartItems relationship
+            // Retrieve the updated cart and cart items
+            $cartItems = DB::table('cart_items')
+            ->where('cart_id', $cart->id)
+                ->get();
 
             return response()->json([
                 'message' => 'Products added to cart successfully.',
-                'cart' => new CartResource($cart), // Return the updated cart resource
-                'cart_items' => $cart->cartItems, // Include the cart items in the response
+                'cart' => $cart, // Return the cart
+                'cart_items' => $cartItems, // Return the updated cart items
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
@@ -113,6 +125,13 @@ class CartController extends Controller
             ], 500);
         }
     }
+
+
+
+
+
+
+
 
 
 
