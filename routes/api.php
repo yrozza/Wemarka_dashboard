@@ -1,12 +1,11 @@
 <?php
 
 use App\Http\Controllers\Api\AreaController;
-use App\Http\Controllers\AdminController;
-use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BrandController;
-use App\Http\Controllers\Api\EmailController;
+use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\ItemController;
 use App\Http\Controllers\Api\CityController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\ShippingController;
@@ -95,6 +94,13 @@ Route::apiResource('products.variants.images', ImageController::class)
         'image' => 'id', // Optional, ensures the `image` route uses `id` for lookup
     ]);
 
+
+////////////////////////////Routes For Cart
+Route::apiResource('carts', CartController::class);
+Route::get('carts/ClientName/{client_name}',[CartController::class, 'showByName']);
+
+
+Route::apiResource('cartItem', ItemController::class);
 
 
 

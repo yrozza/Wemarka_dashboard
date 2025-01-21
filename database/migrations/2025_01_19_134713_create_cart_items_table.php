@@ -19,6 +19,7 @@ return new class extends Migration
             $table->foreignIdFor(Varient::class)->constrained()->onDelete('cascade'); // Links to variants table
             $table->integer('quantity'); // Quantity of the variant in the cart
             $table->decimal('price', 10, 2); // Price at the time of adding to the cart
+            $table->decimal('total_price', 10, 2)->after('price');
             $table->timestamps(); // created_at, updated_at
         });
     }
