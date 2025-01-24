@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 use App\Models\Cart;
 use Illuminate\Support\Facades\DB;
 Use App\Http\Resources\CartResource;
+use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Varient;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -308,4 +310,65 @@ class CartController extends Controller
         }
     }
 
+    public function checkout(Request $request, $cartId)
+    {
+        // Find the cart by the provided cart ID
+        $cart = Cart::find($cartId);
+
+        // Check if the cart exists
+        if (!$cart) {
+            return response()->json(['message' => 'Cart not found.'], 404);
+        }
+
+        // Check if the cart has any items
+        if ($cart->cartItems->isEmpty()) {
+            return response()->json(['message' => 'Cart is empty.'], 400);
+        }
+
+        // Create an order based on the cart items
+        try {
+            // Begin transaction to ensure atomic operations
+            DB::beginTransaction();
+
+            // Create the order
+            $order = Order::create([
+                'client_id' => $cart->client_id,
+                'cart_id' => $cart->id,
+                'status' => 'pending',  // Set order status to pending initially
+                'total_price' => $cart->cartItems->sum('price'),
+                'shipping_status' => 'not_shipped',  // Assuming the initial shipping status
+            ]);
+
+            // Loop through cart items and create order items
+            foreach ($cart->cartItems as $cartItem) {
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'varient_id' => $cartItem->varient_id,
+                    'quantity' => $cartItem->quantity,
+                    'price' => $cartItem->price,
+                ]);
+            }
+
+            // Update the cart status to checked_out using the query builder
+            DB::table('carts')
+                ->where('id', $cartId)
+                ->update(['status' => 'checked_out']);
+
+            // Commit the transaction
+            DB::commit();
+
+            return response()->json(['message' => 'Checkout successful!', 'order' => $order], 200);
+        } catch (\Exception $e) {
+            // Rollback transaction if any exception occurs
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'An error occurred during checkout.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
 }
+
+

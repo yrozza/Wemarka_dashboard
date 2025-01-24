@@ -100,8 +100,12 @@ Route::apiResource('carts', CartController::class);
 Route::get('carts/ClientName/{client_name}',[CartController::class, 'showByName']);
 
 
-Route::apiResource('cartItem', ItemController::class);
+Route::scopeBindings()->group(function () {
+    Route::apiResource('cart.cartItem', ItemController::class);
+});
 
+
+Route::patch('carts/{cartId}/checkout', [CartController::class, 'checkout']);
 
 
 
