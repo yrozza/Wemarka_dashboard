@@ -330,23 +330,43 @@ class CartController extends Controller
             // Begin transaction to ensure atomic operations
             DB::beginTransaction();
 
+            // Calculate the total price
+            $totalPrice = $cart->cartItems->sum(function ($cartItem) {
+                return $cartItem->price * $cartItem->quantity;
+            });
+
             // Create the order
             $order = Order::create([
                 'client_id' => $cart->client_id,
                 'cart_id' => $cart->id,
                 'status' => 'pending',  // Set order status to pending initially
-                'total_price' => $cart->cartItems->sum('price'),
+                'total_price' => $totalPrice,
                 'shipping_status' => 'not_shipped',  // Assuming the initial shipping status
             ]);
 
             // Loop through cart items and create order items
             foreach ($cart->cartItems as $cartItem) {
+                // Create the order item
                 OrderItem::create([
                     'order_id' => $order->id,
                     'varient_id' => $cartItem->varient_id,
                     'quantity' => $cartItem->quantity,
                     'price' => $cartItem->price,
                 ]);
+
+                // Subtract the quantity from the stock in the varients table
+                $variant = Varient::find($cartItem->varient_id); // Assuming Varient is the model for the variants table
+
+                if ($variant) {
+                    // Check if there is enough stock
+                    if ($variant->stock < $cartItem->quantity) {
+                        throw new \Exception("Insufficient stock for variant ID: {$cartItem->varient_id}");
+                    }
+
+                    // Update the stock
+                    $variant->stock -= $cartItem->quantity;
+                    $variant->save();
+                }
             }
 
             // Update the cart status to checked_out using the query builder
@@ -368,6 +388,7 @@ class CartController extends Controller
             ], 500);
         }
     }
+
 
 }
 

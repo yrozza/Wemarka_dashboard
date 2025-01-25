@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\CityController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\ShippingController;
 use App\Http\Controllers\Api\SourceController;
+use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\VarientController;
@@ -105,7 +106,14 @@ Route::scopeBindings()->group(function () {
 });
 
 
-Route::patch('carts/{cartId}/checkout', [CartController::class, 'checkout']);
+/////////////////////////////Routes for Order
+
+Route::patch('carts/{cartId}/checkout', [CartController::class, 'checkout']); //In the Cart Controller
+Route::get('orders', [OrderController::class, 'getAllOrders']);
+Route::get('orders/{id}', [OrderController::class, 'getOrderById']);
+Route::patch('orders/{id}/status', [OrderController::class, 'updateOrderStatus']);
+Route::patch('orders/{id}/shipping-status', [OrderController::class, 'updateShippingStatus']);
+Route::delete('orders/{id}', [OrderController::class, 'deleteOrder']);
 
 
 
