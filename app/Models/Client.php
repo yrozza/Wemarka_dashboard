@@ -13,12 +13,26 @@ class client extends Model
     protected $fillable = [
         'client_name',
         'client_age',
-        'client_area',
-        'client_city',
         'client_email',
         'client_phonenumber',
-        'source_id'
+        'area_id',
+        'city_id',
+        'source_id',
+        'source_link',
+        'area_name',  // Add this
+        'city_name',  // Add this
     ];
+
+    public function area()
+    {
+        return $this->belongsTo(Area::class); 
+    }
+
+    
+    public function city()
+    {
+        return $this->belongsTo(City::class);
+    }
 
     public function carts()
     {

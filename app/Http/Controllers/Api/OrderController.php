@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Varient;
-use App\Models\Order;9
+use App\Models\Order;
 use App\Http\Resources\OrderResource;
 
 class OrderController extends Controller

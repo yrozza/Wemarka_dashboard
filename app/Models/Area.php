@@ -19,4 +19,10 @@ class Area extends Model
     public function city(){
         return $this->belongsTo(City::class, 'city_id', 'id');
     }
+
+    public function clients()
+    {
+        return $this->hasMany(Client::class);
+    }
+
 }
