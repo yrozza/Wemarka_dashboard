@@ -18,7 +18,11 @@ return new class extends Migration
             $table->string('color')->nullable(); 
             $table->string('volume')->nullable(); 
             $table->string('varient')->nullable();
-            $table->string('Pcode')->nullable();
+            $table->string('SKU_code')->nullable();
+            $table->enum('Stock_status', ['in_stock', 'out_of_stock', 'Almost_finished'])
+            ->default('in_stock')
+            ->after('Stock');
+            $table->decimal('Selling_price', 10, 2)->after('price');
             $table->string('weight')->nullable();
             $table->decimal('price', 10, 2);
             $table->string('product_image')->nullable();

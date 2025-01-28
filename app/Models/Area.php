@@ -25,4 +25,9 @@ class Area extends Model
         return $this->hasMany(Client::class);
     }
 
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
+
 }

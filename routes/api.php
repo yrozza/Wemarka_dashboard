@@ -74,7 +74,6 @@ Route::patch('category/{category}', [CategoryController::class, 'updateOnlyone']
 ////////////////////Routes for Products
 Route::apiResource('product', ProductController::class);
 Route::get('product/name/{Product_name}', [ProductController::class, 'showByName']);
-Route::patch('product/{product}', [ProductController::class, 'updateOnlyone']);
 Route::get('/products-with-variants', [ProductController::class, 'getAllProductsWithVariants']);
 
 

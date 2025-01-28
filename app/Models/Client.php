@@ -19,8 +19,8 @@ class client extends Model
         'city_id',
         'source_id',
         'source_link',
-        'area_name',  // Add this
-        'city_name',  // Add this
+        'area_name',  
+        'city_name',  
     ];
 
     public function area()

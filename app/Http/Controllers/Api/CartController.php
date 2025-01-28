@@ -5,7 +5,10 @@ use App\Models\Cart;
 use Illuminate\Support\Facades\DB;
 Use App\Http\Resources\CartResource;
 use App\Models\Order;
+use App\Models\Area;
+use App\Models\City;
 use App\Models\OrderItem;
+use App\Models\client;
 use App\Models\Varient;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -50,22 +53,48 @@ class CartController extends Controller
         try {
             // Validate incoming request
             $validated = $request->validate([
-                'client_id' => 'required|exists:clients,id',
+                'client_id' => 'required|exists:clients,id', // Ensure the client exists
                 'products' => 'required|array',
-                'products.*.varient_id' => 'required|exists:varients,id',  // Ensure variant exists
+                'products.*.varient_id' => 'required|exists:varients,id', // Ensure variant exists
                 'products.*.quantity' => 'nullable|integer|min:1',
             ]);
 
-            // Find a cart for the given client, if exists
-            $cart = DB::table('carts')->where('client_id', $validated['client_id'])->first();
+            // Check if the client exists in the clients table
+            $client = DB::table('clients')->where('id', $validated['client_id'])->first();
 
-            if ($cart) {
-                // If the cart exists, update its status if it's not 'active'
-                if ($cart->status !== 'active') {
-                    DB::table('carts')->where('id', $cart->id)->update(['status' => 'active']);
+            if (!$client) {
+                return response()->json([
+                    'message' => 'Client not found.',
+                ], 404);
+            }
+
+            // Check if the client has an active cart
+            $cart = DB::table('carts')
+            ->where('client_id', $validated['client_id'])
+            ->where('status', 'active')
+            ->first();
+
+            // If no active cart exists, check for a checked_out cart
+            if (!$cart) {
+                $checkedOutCart = DB::table('carts')
+                ->where('client_id', $validated['client_id'])
+                ->where('status', 'checked_out')
+                ->first();
+
+                if ($checkedOutCart) {
+                    // If a checked_out cart exists, create a new cart for the client
+                    $cartId = DB::table('carts')->insertGetId([
+                        'client_id' => $validated['client_id'],
+                        'status' => 'active',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                    $cart = (object) ['id' => $cartId];
                 }
-            } else {
-                // If no such cart exists, create a new cart with 'active' status
+            }
+
+            // If no cart exists, create a new active cart
+            if (!$cart) {
                 $cartId = DB::table('carts')->insertGetId([
                     'client_id' => $validated['client_id'],
                     'status' => 'active',
@@ -75,20 +104,25 @@ class CartController extends Controller
                 $cart = (object) ['id' => $cartId];
             }
 
-            // Loop through each product in the products array
+            // Loop through each product in the request
             foreach ($validated['products'] as $product) {
-                // Retrieve the variant price using the variant_id from the variants table
                 $variant = DB::table('varients')->where('id', $product['varient_id'])->first();
-                $calculatedTotalPrice = $variant->price * ($product['quantity'] ?? 1);
 
-                // Check if the variant is already in the cart
+                // Check if the variant exists and has enough stock
+                if (!$variant || $variant->stock < ($product['quantity'] ?? 1)) {
+                    return response()->json([
+                        'message' => "Insufficient stock for variant ID: {$product['varient_id']}",
+                    ], 400);
+                }
+
+                // Check if the variant already exists in the cart
                 $cartItem = DB::table('cart_items')
                 ->where('cart_id', $cart->id)
                     ->where('varient_id', $product['varient_id'])
                     ->first();
 
                 if ($cartItem) {
-                    // If the variant is already in the cart, update the quantity and total price
+                    // Update the quantity and total price if it exists
                     DB::table('cart_items')
                     ->where('id', $cartItem->id)
                         ->update([
@@ -97,28 +131,26 @@ class CartController extends Controller
                             'updated_at' => now(),
                         ]);
                 } else {
-                    // If the variant is not already in the cart, insert a new cart item
+                    // Add a new cart item if it doesn't exist
                     DB::table('cart_items')->insert([
                         'cart_id' => $cart->id,
                         'varient_id' => $product['varient_id'],
                         'quantity' => $product['quantity'] ?? 1,
                         'price' => $variant->price,
-                        'total_price' => $calculatedTotalPrice,
+                        'total_price' => $variant->price * ($product['quantity'] ?? 1),
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
                 }
             }
 
-            // Retrieve the updated cart and cart items
-            $cartItems = DB::table('cart_items')
-            ->where('cart_id', $cart->id)
-                ->get();
+            // Fetch the updated cart items
+            $cartItems = DB::table('cart_items')->where('cart_id', $cart->id)->get();
 
             return response()->json([
                 'message' => 'Products added to cart successfully.',
-                'cart' => $cart, // Return the cart
-                'cart_items' => $cartItems, // Return the updated cart items
+                'cart' => $cart,
+                'cart_items' => $cartItems,
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
@@ -127,6 +159,11 @@ class CartController extends Controller
             ], 500);
         }
     }
+
+
+
+
+
 
 
 
@@ -312,21 +349,57 @@ class CartController extends Controller
 
     public function checkout(Request $request, $cartId)
     {
-        // Find the cart by the provided cart ID
-        $cart = Cart::find($cartId);
-
-        // Check if the cart exists
-        if (!$cart) {
-            return response()->json(['message' => 'Cart not found.'], 404);
-        }
-
-        // Check if the cart has any items
-        if ($cart->cartItems->isEmpty()) {
-            return response()->json(['message' => 'Cart is empty.'], 400);
-        }
-
-        // Create an order based on the cart items
         try {
+            // Validate the request
+            $validated = $request->validate([
+                'city_id' => 'required|exists:cities,id', // city_id is required and must exist
+                'area_id' => 'required|exists:areas,id', // area_id is required and must exist
+                'address' => 'required|string|max:255',  // address is required
+                'client_notes' => 'nullable|string|max:255', // Notes are optional
+                'additional_phone' => 'nullable|string|max:20', // Optional additional phone number
+            ]);
+
+            // Find the cart by the provided cart ID
+            $cart = Cart::find($cartId);
+
+            // Check if the cart exists
+            if (!$cart) {
+                throw new \Exception('Cart not found.');
+            }
+
+            // Check if the cart has any items
+            if ($cart->cartItems->isEmpty()) {
+                throw new \Exception('Cart is empty.');
+            }
+
+            // Retrieve Area_name and City_name from the areas and cities tables
+            $area = Area::find($validated['area_id']);
+            if (!$area) {
+                throw new \Exception('Invalid area_id.');
+            }
+
+            $city = City::find($validated['city_id']);
+            if (!$city) {
+                throw new \Exception('Invalid city_id.');
+            }
+
+            // Ensure the area belongs to the city
+            if ($area->city_id !== $city->id) {
+                throw new \Exception('The area does not belong to the selected city.');
+            }
+
+            $area_name = $area->Area_name; 
+            $city_name = $city->City_name; 
+
+            // Retrieve client details from the clients table
+            $client = Client::find($cart->client_id);
+            if (!$client) {
+                throw new \Exception('Client not found.');
+            }
+
+            $client_name = $client->client_name; // Get client_name from the clients table
+            $client_phone = $client->client_phonenumber; // Get client_phone from the clients table
+
             // Begin transaction to ensure atomic operations
             DB::beginTransaction();
 
@@ -342,6 +415,15 @@ class CartController extends Controller
                 'status' => 'pending',  // Set order status to pending initially
                 'total_price' => $totalPrice,
                 'shipping_status' => 'not_shipped',  // Assuming the initial shipping status
+                'city_id' => $validated['city_id'], // Save city_id
+                'area_id' => $validated['area_id'], // Save area_id
+                'address' => $validated['address'], // Save address
+                'client_notes' => $validated['client_notes'] ?? null, // Save client_notes if provided, otherwise null
+                'area_name' => $area_name, // Save Area_name
+                'city_name' => $city_name, // Save City_name
+                'client_name' => $client_name, // Save client_name
+                'client_phone' => $client_phone, // Save client_phone
+                'additional_phone' => $validated['additional_phone'] ?? null, // Save additional phone if provided
             ]);
 
             // Loop through cart items and create order items
@@ -355,7 +437,7 @@ class CartController extends Controller
                 ]);
 
                 // Subtract the quantity from the stock in the varients table
-                $variant = Varient::find($cartItem->varient_id); // Assuming Varient is the model for the variants table
+                $variant = Varient::find($cartItem->varient_id);
 
                 if ($variant) {
                     // Check if there is enough stock
@@ -369,7 +451,7 @@ class CartController extends Controller
                 }
             }
 
-            // Update the cart status to checked_out using the query builder
+            // Update the cart status to checked_out
             DB::table('carts')
                 ->where('id', $cartId)
                 ->update(['status' => 'checked_out']);
@@ -388,6 +470,11 @@ class CartController extends Controller
             ], 500);
         }
     }
+
+
+
+
+
 
 
 }

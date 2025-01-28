@@ -19,6 +19,15 @@ return new class extends Migration
             $table->foreignIdFor(Category::class);
             $table->string('Product_name');
             $table->text('Product_description');
+            $table->string('Origin');
+            $table->string('Benefit');
+            $table->string('Effect');
+            $table->text('Ingredients');
+            $table->string('Supplier');
+            $table->string('Category_name')->after('category_id');
+            $table->string('Brand_name')->after('brand_id');
+            $table->string('Subcategory')->after('Category_name');
+            $table->string('Tags');
             $table->timestamps();
         });
     }

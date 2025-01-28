@@ -7,13 +7,31 @@ use Illuminate\Database\Eloquent\Model;
 class Order extends Model
 {
     protected $fillable = [
-        'client_id',       // The ID of the client placing the order
-        'cart_id',         // The cart associated with the order
+        'client_id',       
+        'cart_id',         
         'varient_id',
-        'status',          // The status of the order (e.g., pending, completed)
-        'shipping_status', // The shipping status of the order
-        'total_price',     // The total price of the order
+        'status',         
+        'shipping_status', 
+        'total_price',  
+        'Address',   
+        'client_notes',
+        'area_id',
+        'city_id',
+        'area_name',
+        'city_name',  
+        'client_name',
+        'client_phone',
+        'additional_phone'
     ];
+
+    public function area()
+    {
+        return $this->belongsTo(Area::class);
+    }
+    public function city()
+    {
+        return $this->belongsTo(City::class);
+    }
 
     public function client()
     {

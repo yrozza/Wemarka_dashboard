@@ -13,37 +13,6 @@ class Cart extends Model
         'quantity',     // Quantity of the variant
         'price',        // Price of the variant
     ];
-    public function checkout()
-    {
-        if ($this->cartItems()->count() === 0) {
-            throw new \Exception('Cart is empty and cannot be checked out.');
-        }
-
-        return DB::transaction(function () {
-            // Create the order
-            $order = Order::create([
-                'client_id' => $this->client_id,
-                'cart_id' => $this->id,
-                'total_price' => $this->cartItems->sum(fn($item) => $item->quantity * $item->varient->price),
-                'status' => 'pending', // Default status
-                'shipping_status' => 'not_shipped', // Default shipping status
-            ]);
-
-            // Transfer cart items to order items
-            foreach ($this->cartItems as $cartItem) {
-                $order->orderItems()->create([
-                    'varient_id' => $cartItem->varient_id,
-                    'quantity' => $cartItem->quantity,
-                    'price' => $cartItem->varient->price,
-                ]);
-            }
-
-            // Update cart status
-            $this->update(['status' => 'checked_out']);
-
-            return $order;
-        });
-    }
     public function client()
     {
         return $this->belongsTo(Client::class);

@@ -172,65 +172,56 @@ class ClientController extends Controller
     {
         // Validate incoming request
         $validated = $request->validate([
-            'client_name' => 'nullable|string|max:255|unique:clients,client_name,' . $id,  // Allow null but ensure uniqueness except for current client
+            'client_name' => 'nullable|string|max:255|unique:clients,client_name,' . $id,
             'client_age' => 'nullable|integer',
             'client_email' => 'nullable|email|unique:clients,client_email,' . $id,
             'client_phonenumber' => 'nullable|string|unique:clients,client_phonenumber,' . $id,
-            'area_id' => 'nullable|exists:areas,id',  // Ensure the area_id is valid
-            'city_id' => 'nullable|exists:cities,id',  // Ensure the city_id is valid
-            'source_id' => 'nullable|exists:sources,id',  // Ensure source_id is valid
+            'area_id' => 'nullable|exists:areas,id',
+            'city_id' => 'nullable|exists:cities,id',
+            'source_id' => 'nullable|exists:sources,id',
             'source_link' => 'nullable|url',
         ]);
 
         // Find the client by ID
         $client = Client::find($id);
 
-        // Check if the client exists
         if (!$client) {
             return response()->json(['message' => 'Client not found'], 404);
         }
 
-        // Handle area and city changes
-        if (isset($validated['area_id'])) {
-            // Get the area based on the area_id
+        // Check if area_id and city_id are both provided
+        if (isset($validated['area_id']) && isset($validated['city_id'])) {
             $area = Area::find($validated['area_id']);
 
-            // Check if area exists, if not, return an error
-            if (!$area) {
-                return response()->json(['message' => 'Area not found'], 404);
+            // Check if the area belongs to the provided city_id
+            if ($area->city_id != $validated['city_id']) {
+                return response()->json(['message' => 'The selected area does not belong to the specified city'], 400);
             }
 
-            // Set the area_name from the area table
+            // Assign area_name and city_name
             $validated['area_name'] = $area->Area_name;
-
-            // Automatically set the city_id to the first city in that area (or adjust based on your logic)
-            $city = $area->city()->first();  // Assuming `Area` model has a relationship to `City`
-            if ($city) {
-                $validated['city_id'] = $city->id;
-                $validated['city_name'] = $city->City_name;
-            } else {
-                $validated['city_id'] = null;  // No cities found in the area
-                $validated['city_name'] = 'No cities available';  // Adjust accordingly
-            }
-        }
-
-        // If city_id is provided, check if it matches the area_id
-        if (isset($validated['city_id'])) {
             $city = City::find($validated['city_id']);
-
-            if (!$city) {
-                return response()->json(['message' => 'City not found'], 404);
-            }
-
-            // Check if the city belongs to the selected area
-            if ($city->area_id != $validated['area_id']) {
-                return response()->json(['message' => 'The selected city does not belong to the specified area'], 400);
-            }
-
             $validated['city_name'] = $city->City_name;
         }
 
-        // If source_link is provided as null, set it to 'Source link is not provided'
+        // Handle cases where only one of area_id or city_id is provided
+        if (isset($validated['area_id']) && !isset($validated['city_id'])) {
+            $area = Area::find($validated['area_id']);
+            $validated['area_name'] = $area->Area_name;
+
+            $city = $area->city;
+            $validated['city_id'] = $city->id;
+            $validated['city_name'] = $city->City_name;
+        }
+
+        if (isset($validated['city_id']) && !isset($validated['area_id'])) {
+            $city = City::find($validated['city_id']);
+            $validated['city_name'] = $city->City_name;
+
+            return response()->json(['message' => 'Area is required when providing a city'], 400);
+        }
+
+        // Handle source_link
         if (empty($validated['source_link'])) {
             $validated['source_link'] = 'Source link is not provided';
         }
@@ -238,12 +229,14 @@ class ClientController extends Controller
         // Update the client record
         $client->update($validated);
 
-        // Return the updated client with the associated source_name
         return response()->json([
             'message' => 'Client updated successfully!',
             'client' => $client,
         ], 200);
     }
+
+
+
 
 
     
