@@ -8,6 +8,7 @@ use Illuminate\Validation\Rule;
 use App\Models\Product;
 use App\Models\Category;
 use Illuminate\Support\Facades\DB;
+use App\Models\Varient;
 use App\Models\Brand;
 use Illuminate\Http\Request;
 
@@ -112,15 +113,34 @@ class ProductController extends Controller
 
 
 
+
     public function getAllProductsWithVariants(Request $request)
     {
-        // Get the 'per_page' parameter from the request, default to 10 if not provided
         $perPage = $request->get('per_page', 10);
 
-        // Eager load variants for all products and paginate the results
-        $products = Product::with('variants')->paginate($perPage);
+        $products = DB::table('products')
+        ->leftJoin('varients', 'products.id', '=', 'varients.product_id')
+        ->select('products.*', 'varients.*') // Get all columns from both tables
+        ->paginate($perPage);
 
         return response()->json($products);
+    }
+
+
+
+    public function show($id)
+    {
+        $product = DB::table('products')
+        ->leftJoin('varients', 'products.id', '=', 'varients.product_id')
+        ->where('products.id', $id)
+            ->select('products.*', 'varients.*') // Select everything from both tables
+            ->get();
+
+        if ($product->isEmpty()) {
+            return response()->json(['message' => 'Product not found'], 404);
+        }
+
+        return response()->json($product);
     }
 
 

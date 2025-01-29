@@ -17,6 +17,25 @@ class OrderController extends Controller
 
 
     // Get an order by ID
+
+    // public function getAllinfo(Request $request)
+    // {
+    //     // Set the default number of orders per page
+    //     $perPage = $request->query('per_page', 10); // Default to 10 orders per page
+
+    //     // Fetch paginated orders without eager loading orderItems
+    //     $orders = Order::paginate($perPage);
+
+    //     // Fetch the related orderItems for each order in a separate query
+    //     $orders->each(function ($order) {
+    //         $order->orderItems = $order->orderItems()->get();
+    //     });
+
+    //     // Return the paginated orders with the orderItems manually loaded
+    //     return response()->json($orders);
+    // }
+
+
     
 
     public function getAllOrders(Request $request)

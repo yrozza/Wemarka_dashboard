@@ -15,19 +15,20 @@ class ItemResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
-            'variant_id' => $this->varient_id,
+            'product_name' => $this->varient->product->Product_name,
+            'brand' => $this->varient->product->brand->Brand_name,
+            'category' => $this->varient->product->category->Category, 
             'quantity' => $this->quantity,
             'price_per_quantity' => $this->price,
             'total_price' => $this->order->total_price,
-            'product_name' => $this->varient->product->Product_name, 
-            'brand' => $this->varient->product->brand->Brand_name,  
-            'category' => $this->varient->product->category->Category,  
             'variant_details' => [
                 'color' => $this->varient->color,
                 'volume' => $this->varient->volume,
-                'pcode' => $this->varient->Pcode,
                 'weight' => $this->varient->weight,
+                'Origin'  =>$this->varient->product->Origin,
+                'Effect'  => $this->varient->product->Effect,
+                'Benefit' =>$this->varient->product->Benefit,
+                'Ingredients' =>$this->varient->product->Ingredients
             ]
         ];
     }

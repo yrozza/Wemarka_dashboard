@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\BrandController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ItemController;
+use App\Http\Controllers\QRCodeController;
 use App\Http\Controllers\Api\CityController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\ShippingController;
@@ -108,11 +109,17 @@ Route::scopeBindings()->group(function () {
 /////////////////////////////Routes for Order
 
 Route::patch('carts/{cartId}/checkout', [CartController::class, 'checkout']); //In the Cart Controller
+// Route::get('orders/AllOrderData',[OrderController::class , 'getAllinfo']);
 Route::get('orders', [OrderController::class, 'getAllOrders']);
 Route::get('orders/{id}', [OrderController::class, 'getOrderById']);
 Route::patch('orders/{id}/status', [OrderController::class, 'updateOrderStatus']);
 Route::patch('orders/{id}/shipping-status', [OrderController::class, 'updateShippingStatus']);
 Route::delete('orders/{id}', [OrderController::class, 'deleteOrder']);
+
+
+
+//////////////////////QR CODE
+Route::get('generate-qr/{order_id}', [QRCodeController::class, 'generateQRCode']);
 
 
 
