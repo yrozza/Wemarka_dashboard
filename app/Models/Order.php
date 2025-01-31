@@ -7,22 +7,27 @@ use Illuminate\Database\Eloquent\Model;
 class Order extends Model
 {
     protected $fillable = [
-        'client_id',       
-        'cart_id',         
+        'client_id',
+        'cart_id',
         'varient_id',
-        'status',         
-        'shipping_status', 
-        'total_price',  
-        'Address',   
+        'status',
+        'shipping_status',
+        'total_price',
+        'Address',
         'client_notes',
         'area_id',
         'city_id',
         'area_name',
-        'city_name',  
+        'city_name',
         'client_name',
         'client_phone',
-        'additional_phone'
+        'additional_phone',
+        'Cost_shipping_price', 
+        'Shipping_price',     
+        'packing',             
+        'packing_price'       
     ];
+
 
     public function area()
     {

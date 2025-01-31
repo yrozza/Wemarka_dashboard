@@ -15,21 +15,22 @@ class ItemResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'product_name' => $this->varient->product->Product_name,
-            'brand' => $this->varient->product->brand->Brand_name,
-            'category' => $this->varient->product->category->Category, 
-            'quantity' => $this->quantity,
-            'price_per_quantity' => $this->price,
-            'total_price' => $this->order->total_price,
+            'product_name' => $this->varient->product->Product_name ?? 'unprovided',
+            'brand' => $this->varient->product->brand->Brand_name ?? 'unprovided',
+            'category' => $this->varient->product->category->Category ?? 'unprovided',
+            'quantity' => $this->quantity ?? 'unprovided',
+            'price_per_quantity' => $this->price ?? 'unprovided',
+            'total_price' => $this->order->total_price ?? 'unprovided',
             'variant_details' => [
-                'color' => $this->varient->color,
-                'volume' => $this->varient->volume,
-                'weight' => $this->varient->weight,
-                'Origin'  =>$this->varient->product->Origin,
-                'Effect'  => $this->varient->product->Effect,
-                'Benefit' =>$this->varient->product->Benefit,
-                'Ingredients' =>$this->varient->product->Ingredients
+                'color' => $this->varient->color ?? 'unprovided',
+                'volume' => $this->varient->volume ?? 'unprovided',
+                'weight' => $this->varient->weight ?? 'unprovided',
+                'Origin' => $this->varient->product->Origin ?? 'unprovided',
+                'Effect' => $this->varient->product->Effect ?? 'unprovided',
+                'Benefit' => $this->varient->product->Benefit ?? 'unprovided',
+                'Ingredients' => $this->varient->product->Ingredients ?? 'unprovided'
             ]
+
         ];
     }
 }

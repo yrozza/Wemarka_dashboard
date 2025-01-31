@@ -109,11 +109,12 @@ Route::scopeBindings()->group(function () {
 /////////////////////////////Routes for Order
 
 Route::patch('carts/{cartId}/checkout', [CartController::class, 'checkout']); //In the Cart Controller
-// Route::get('orders/AllOrderData',[OrderController::class , 'getAllinfo']);
+Route::get('/order/{orderId}/ticket', [OrderController::class, 'getOrderInfo']);
 Route::get('orders', [OrderController::class, 'getAllOrders']);
 Route::get('orders/{id}', [OrderController::class, 'getOrderById']);
 Route::patch('orders/{id}/status', [OrderController::class, 'updateOrderStatus']);
 Route::patch('orders/{id}/shipping-status', [OrderController::class, 'updateShippingStatus']);
+Route::get('/order/{orderId}/customer-info', [OrderController::class, 'getCustomOrderInfo']);
 Route::delete('orders/{id}', [OrderController::class, 'deleteOrder']);
 
 

@@ -17,17 +17,24 @@ class OrderResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'client_name' => $this->client_name, 
-            'client_phone' => $this->client_phone ,
-            'addiontional_phone'=>$this->addiontional_phone,
+            'client_name' => $this->client_name,
+            'client_phone' => $this->client_phone,
+            'additional_phone' => $this->additional_phone,
+            'area_name' => $this->area_name,
+            'city_name' => $this->city_name,
+            'Address' => $this->Address,
             'cart_id' => $this->cart_id,
             'status' => $this->status,
-            'total_price' => $this->total_price,
             'shipping_status' => $this->shipping_status,
-            'area_name' => $this->area_name,  
-            'city_name' => $this->city_name, 
-            'Address' =>$this->Address,
-            'order_items' => ItemResource::collection($this->whenLoaded('orderItems')), // Eager loaded order items
+            'Cost_shipping_price' => $this->Cost_shipping_price,
+            'Shipping_price' => $this->Shipping_price,
+            'packing' => $this->packing ? 'Provided' : 'Not provided', // "Provided" if true, else "Not provided"
+            'packing_price' => $this->packing ? $this->packing_price : 0, // 0 if false
+            'total_price' => $this->total_price,
+            'order_items' => ItemResource::collection($this->whenLoaded('orderItems')),
         ];
+
+
+
     }
 }

@@ -354,9 +354,13 @@ class CartController extends Controller
             $validated = $request->validate([
                 'city_id' => 'required|exists:cities,id', // city_id is required and must exist
                 'area_id' => 'required|exists:areas,id', // area_id is required and must exist
-                'address' => 'required|string|max:255',  // address is required
+                'Address' => 'required|string|max:255',  // address is required
                 'client_notes' => 'nullable|string|max:255', // Notes are optional
                 'additional_phone' => 'nullable|string|max:20', // Optional additional phone number
+                'Cost_shipping_price' => 'required|numeric',
+                'Shipping_price' => 'required|numeric',
+                'packing' => 'nullable|boolean',
+                'packing_price' => 'nullable|numeric|gte:0'
             ]);
 
             // Find the cart by the provided cart ID
@@ -388,8 +392,8 @@ class CartController extends Controller
                 throw new \Exception('The area does not belong to the selected city.');
             }
 
-            $area_name = $area->Area_name; 
-            $city_name = $city->City_name; 
+            $area_name = $area->Area_name;
+            $city_name = $city->City_name;
 
             // Retrieve client details from the clients table
             $client = Client::find($cart->client_id);
@@ -408,6 +412,15 @@ class CartController extends Controller
                 return $cartItem->price * $cartItem->quantity;
             });
 
+            // Add shipping and packing costs to total price if provided
+            if ($request->has('Cost_shipping_price')) {
+                $totalPrice += $validated['Cost_shipping_price'];
+            
+            }
+            if ($request->has('packing') && $validated['packing'] && $validated['packing_price'] > 0) {
+                $totalPrice += $validated['packing_price'];
+            }
+
             // Create the order
             $order = Order::create([
                 'client_id' => $cart->client_id,
@@ -417,13 +430,17 @@ class CartController extends Controller
                 'shipping_status' => 'not_shipped',  // Assuming the initial shipping status
                 'city_id' => $validated['city_id'], // Save city_id
                 'area_id' => $validated['area_id'], // Save area_id
-                'address' => $validated['address'], // Save address
+                'Address' => $validated['Address'], // Save address
                 'client_notes' => $validated['client_notes'] ?? null, // Save client_notes if provided, otherwise null
                 'area_name' => $area_name, // Save Area_name
                 'city_name' => $city_name, // Save City_name
                 'client_name' => $client_name, // Save client_name
                 'client_phone' => $client_phone, // Save client_phone
                 'additional_phone' => $validated['additional_phone'] ?? null, // Save additional phone if provided
+                'Cost_shipping_price' => $validated['Cost_shipping_price'] ?? null,
+                'Shipping_price' => $validated['Shipping_price'] ?? null,
+                'packing' => $validated['packing'] ?? false,
+                'packing_price' => $validated['packing_price'] ?? null,
             ]);
 
             // Loop through cart items and create order items
@@ -447,6 +464,14 @@ class CartController extends Controller
 
                     // Update the stock
                     $variant->stock -= $cartItem->quantity;
+
+                    // Check stock status and update accordingly
+                    if ($variant->stock == 0) {
+                        $variant->Stock_status = 'out_of_stock';
+                    } elseif ($variant->stock < 10) {
+                        $variant->Stock_status = 'Almost_finished';
+                    }
+
                     $variant->save();
                 }
             }
@@ -470,6 +495,8 @@ class CartController extends Controller
             ], 500);
         }
     }
+
+
 
 
 

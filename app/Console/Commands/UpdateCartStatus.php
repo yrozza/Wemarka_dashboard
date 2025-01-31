@@ -12,26 +12,31 @@ class UpdateCartStatus extends Command
 
     public function handle()
     {
-        // Mark carts as abandoned after 24 hours
-        DB::table('carts')
+        // Find carts that need to be abandoned (older than 24 hours)
+        $abandonedCarts = DB::table('carts')
             ->where('status', 'active')
             ->where('updated_at', '<', now()->subHours(24))
-            ->update(['status' => 'abandoned', 'updated_at' => now()]);
-
-        // Delete abandoned carts after 24 days
-        $cartsToDelete = DB::table('carts')
-            ->where('status', 'abandoned')
-            ->where('updated_at', '<', now()->subDays(24))
             ->pluck('id');
 
-        if ($cartsToDelete->isNotEmpty()) {
-            // Delete related cart items
-            DB::table('cart_items')->whereIn('cart_id', $cartsToDelete)->delete();
+        if ($abandonedCarts->isNotEmpty()) {
+            // Delete related cart items before deleting carts
+            DB::table('cart_items')->whereIn('cart_id', $abandonedCarts)->delete();
 
-            // Delete the carts
-            DB::table('carts')->whereIn('id', $cartsToDelete)->delete();
+            // Delete the carts that are being marked as abandoned
+            DB::table('carts')->whereIn('id', $abandonedCarts)->delete();
         }
 
-        $this->info('Cart status updated successfully.');
+        // Find abandoned carts older than 24 days and delete them
+        $oldAbandonedCarts = DB::table('carts')
+            ->where('status', 'abandoned')
+            ->where('updated_at', '<', now()->subDays(1))
+            ->pluck('id');
+
+        if ($oldAbandonedCarts->isNotEmpty()) {
+            DB::table('cart_items')->whereIn('cart_id', $oldAbandonedCarts)->delete();
+            DB::table('carts')->whereIn('id', $oldAbandonedCarts)->delete();
+        }
+
+        $this->info('Cart status updated and old abandoned carts deleted successfully.');
     }
 }

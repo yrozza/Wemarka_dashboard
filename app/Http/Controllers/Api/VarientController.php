@@ -19,8 +19,26 @@ class VarientController extends Controller
      */
     public function index(Product $product)
     {
-        return response()->json($product->variants);
+        // Paginate the variants (you can change the perPage number as needed)
+        $variants = $product->variants()->paginate(15);  // 15 items per page
+
+        // Modify the Stock_status based on stock level
+        $variants->getCollection()->transform(function ($variant) {
+            if ($variant->stock <= 0) {
+                $variant->Stock_status = 'out_of_stock';
+            } elseif ($variant->stock < 10) {
+                $variant->Stock_status = 'Almost_finished';
+            } else {
+                $variant->Stock_status = 'in_stock';
+            }
+            return $variant;
+        });
+
+        // Return the paginated result
+        return response()->json($variants);
     }
+
+
 
 
 
@@ -114,12 +132,22 @@ class VarientController extends Controller
     {
         // Find the variant scoped to the product
         $variant = Varient::where('product_id', $product)
-        ->with('images')
-        ->findOrFail($variant);
+            ->with('images')
+            ->findOrFail($variant);
+
+        // Check the stock and update Stock_status
+        if ($variant->stock <= 0) {
+            $variant->Stock_status = 'out_of_stock';
+        } elseif ($variant->stock < 10) {
+            $variant->Stock_status = 'Almost_finished';
+        } else {
+            $variant->Stock_status = 'in_stock';
+        }
 
         // Return the variant as a JSON response
         return response()->json($variant, 200);
     }
+
 
     /**
      * Update the specified resource in storage.
