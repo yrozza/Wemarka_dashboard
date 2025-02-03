@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\QRCodeController;
+use App\Http\Controllers\PDFController;
 use Illuminate\Support\Facades\Mail;
 
 Route::get('/', function () {
@@ -9,6 +10,10 @@ Route::get('/', function () {
 });
 
 require __DIR__.'/auth.php';
+
+
+
+Route::get('/generate-pdf/{orderId}', [PDFController::class, 'generatePdf']);
 
 Route::get('show-order-qr/{order_id}', [QRCodeController::class, 'showOrderQRCode']);
 

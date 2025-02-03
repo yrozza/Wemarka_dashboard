@@ -357,10 +357,12 @@ class CartController extends Controller
                 'Address' => 'required|string|max:255',  // address is required
                 'client_notes' => 'nullable|string|max:255', // Notes are optional
                 'additional_phone' => 'nullable|string|max:20', // Optional additional phone number
-                'Cost_shipping_price' => 'required|numeric',
-                'Shipping_price' => 'required|numeric',
+                'Cost_shipping_price' => 'nullable|numeric', // Shipping cost can be null (free delivery)
+                'Shipping_price' => 'required|numeric', // Shipping price is required
                 'packing' => 'nullable|boolean',
-                'packing_price' => 'nullable|numeric|gte:0'
+                'packing_price' => 'nullable|numeric|gte:0',
+                'is_discount' => 'nullable|boolean', // Discount flag (optional)
+                'discount_value' => 'nullable|numeric|between:0,100' // Discount percentage
             ]);
 
             // Find the cart by the provided cart ID
@@ -401,46 +403,67 @@ class CartController extends Controller
                 throw new \Exception('Client not found.');
             }
 
-            $client_name = $client->client_name; // Get client_name from the clients table
-            $client_phone = $client->client_phonenumber; // Get client_phone from the clients table
+            $client_name = $client->client_name;
+            $client_phone = $client->client_phonenumber;
 
             // Begin transaction to ensure atomic operations
             DB::beginTransaction();
 
-            // Calculate the total price
+            // Calculate the total price (products only)
             $totalPrice = $cart->cartItems->sum(function ($cartItem) {
                 return $cartItem->price * $cartItem->quantity;
             });
 
             // Add shipping and packing costs to total price if provided
-            if ($request->has('Cost_shipping_price')) {
-                $totalPrice += $validated['Cost_shipping_price'];
-            
+            $shippingFeeMessage = null; // Default message
+            $costShippingPrice = $validated['Cost_shipping_price'] ?? 0; // If Cost_shipping_price is null, set it to 0
+            $totalPrice += $costShippingPrice; // Add shipping cost to total (even if it's 0)
+
+            if ($request->has('Shipping_price')) {
+                $totalPrice += $validated['Shipping_price']; // Add required shipping price
             }
+
             if ($request->has('packing') && $validated['packing'] && $validated['packing_price'] > 0) {
                 $totalPrice += $validated['packing_price'];
             }
 
-            // Create the order
+            // Handle Discount Calculation
+            $discount = 0;
+            if ($request->has('is_discount') && $validated['is_discount']) {
+                // Ensure the discount value is provided if discount is enabled
+                if (!$request->has('discount_value')) {
+                    return response()->json([
+                        'message' => 'You must provide a discount value when is_discount is true.'
+                    ], 400);
+                }
+
+                // Apply discount (percentage-based)
+                $discount = ($validated['discount_value'] / 100) * $totalPrice;
+                $totalPrice -= $discount; // Subtract discount from total
+            }
+
+            // Create the order with discount
             $order = Order::create([
                 'client_id' => $cart->client_id,
                 'cart_id' => $cart->id,
-                'status' => 'pending',  // Set order status to pending initially
+                'status' => 'pending',
                 'total_price' => $totalPrice,
-                'shipping_status' => 'not_shipped',  // Assuming the initial shipping status
-                'city_id' => $validated['city_id'], // Save city_id
-                'area_id' => $validated['area_id'], // Save area_id
-                'Address' => $validated['Address'], // Save address
-                'client_notes' => $validated['client_notes'] ?? null, // Save client_notes if provided, otherwise null
-                'area_name' => $area_name, // Save Area_name
-                'city_name' => $city_name, // Save City_name
-                'client_name' => $client_name, // Save client_name
-                'client_phone' => $client_phone, // Save client_phone
-                'additional_phone' => $validated['additional_phone'] ?? null, // Save additional phone if provided
-                'Cost_shipping_price' => $validated['Cost_shipping_price'] ?? null,
-                'Shipping_price' => $validated['Shipping_price'] ?? null,
+                'shipping_status' => 'not_shipped',
+                'city_id' => $validated['city_id'],
+                'area_id' => $validated['area_id'],
+                'Address' => $validated['Address'],
+                'client_notes' => $validated['client_notes'] ?? null,
+                'area_name' => $area_name,
+                'city_name' => $city_name,
+                'client_name' => $client_name,
+                'client_phone' => $client_phone,
+                'additional_phone' => $validated['additional_phone'] ?? null,
+                'Cost_shipping_price' => $costShippingPrice, // Shipping cost (can be 0)
+                'Shipping_price' => $validated['Shipping_price'], // Shipping price (required)
                 'packing' => $validated['packing'] ?? false,
                 'packing_price' => $validated['packing_price'] ?? null,
+                'is_discount' => $validated['is_discount'] ?? false,
+                'discount' => $discount, // Set discount value (either 0 or applied discount)
             ]);
 
             // Loop through cart items and create order items
@@ -484,7 +507,11 @@ class CartController extends Controller
             // Commit the transaction
             DB::commit();
 
-            return response()->json(['message' => 'Checkout successful!', 'order' => $order], 200);
+            return response()->json([
+                'message' => 'Checkout successful!',
+                'order' => $order,
+                'shipping_fee_message' => $costShippingPrice == 0 ? 'No shipping fee charged' : null // No fee message if free shipping
+            ], 200);
         } catch (\Exception $e) {
             // Rollback transaction if any exception occurs
             DB::rollBack();
@@ -495,6 +522,10 @@ class CartController extends Controller
             ], 500);
         }
     }
+
+
+
+
 
 
 

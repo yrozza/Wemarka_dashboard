@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ItemController;
 use App\Http\Controllers\QRCodeController;
+use App\Http\Controllers\PDFController;
 use App\Http\Controllers\Api\CityController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\ShippingController;
@@ -115,12 +116,16 @@ Route::get('orders/{id}', [OrderController::class, 'getOrderById']);
 Route::patch('orders/{id}/status', [OrderController::class, 'updateOrderStatus']);
 Route::patch('orders/{id}/shipping-status', [OrderController::class, 'updateShippingStatus']);
 Route::get('/order/{orderId}/customer-info', [OrderController::class, 'getCustomOrderInfo']);
+Route::get('/orders-report', [OrderController::class, 'getOrderReport']);
 Route::delete('orders/{id}', [OrderController::class, 'deleteOrder']);
 
 
 
 //////////////////////QR CODE
 Route::get('generate-qr/{order_id}', [QRCodeController::class, 'generateQRCode']);
+
+Route::get('/order/{orderId}/pdf', [PDFController::class, 'generatePdf']);
+
 
 
 

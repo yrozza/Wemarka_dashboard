@@ -11,7 +11,7 @@ class QRCodeController extends Controller
     public function generateQRCode($orderId)
     {
         // Generate the URL for the order details
-        $url = url("/api/order/{$orderId}/customer-info");
+        $url = url("/api/order/{$orderId}/pdf");
 
         // Generate the QR code as a PNG
         $qrCode = QrCode::format('svg') // Ensure PNG format

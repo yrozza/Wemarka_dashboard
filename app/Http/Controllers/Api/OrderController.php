@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Varient;
+use Carbon\Carbon;
 use App\Models\Order;
 use App\Http\Resources\OrderResource;
 
@@ -14,12 +15,74 @@ class OrderController extends Controller
     /**
      * Display a listing of the resource.
      */
+    public function getOrderReport(Request $request)
+    {
+        $fromDate = $request->query('from_date');
+        $toDate = $request->query('to_date');
+        $filter = $request->query('filter');
+
+        if ($filter) {
+            switch ($filter) {
+                case 'yesterday':
+                    $fromDate = Carbon::yesterday()->setHour(9)->setMinute(0)->setSecond(0);
+                    $toDate = Carbon::yesterday()->setHour(20)->setMinute(59)->setSecond(59);
+                    break;
+                case 'last_week':
+                    $fromDate = Carbon::now()->subWeek()->startOfWeek()->setHour(9)->setMinute(0)->setSecond(0);
+                    $toDate = Carbon::now()->subWeek()->endOfWeek()->setHour(20)->setMinute(59)->setSecond(59);
+                    break;
+                case 'last_month':
+                    $fromDate = Carbon::now()->subMonth()->startOfMonth()->setHour(9)->setMinute(0)->setSecond(0);
+                    $toDate = Carbon::now()->subMonth()->endOfMonth()->setHour(20)->setMinute(59)->setSecond(59);
+                    break;
+                case 'last_year':
+                    $fromDate = Carbon::now()->subYear()->startOfYear()->setHour(9)->setMinute(0)->setSecond(0);
+                    $toDate = Carbon::now()->subYear()->endOfYear()->setHour(20)->setMinute(59)->setSecond(59);
+                    break;
+                default:
+                    return response()->json(['error' => 'Invalid filter value'], 400);
+            }
+        } elseif (!$fromDate || !$toDate) {
+            return response()->json(['error' => 'Please provide a valid date range or filter'], 400);
+        } else {
+            // Apply shift hours to custom date input
+            $fromDate = Carbon::parse($fromDate)->setHour(9)->setMinute(0)->setSecond(0);
+            $toDate = Carbon::parse($toDate)->setHour(20)->setMinute(59)->setSecond(59);
+        }
+
+        $orders = Order::whereBetween('created_at', [$fromDate, $toDate])->get();
+
+        $totalOrders = $orders->count();
+        $totalPrice = $orders->sum('total_price');
+        $totalShippingPrice = $orders->sum('Shipping_price');
+        $totalCostShippingPrice = $orders->sum('Cost_shipping_price');
+        $totalPackingPrice = $orders->sum('packing_price');
+
+        $totalCostPrice = $orders->flatMap(function ($order) {
+            return $order->orderItems; // Assuming orderItems relation exists
+        })->sum(function ($item) {
+            return $item->varient->cost_price * $item->quantity; // Fixed "varient" typo
+        });
+
+        $netProfit = $totalPrice - $totalCostPrice - $totalPackingPrice - $totalShippingPrice;
+
+        return response()->json([
+            'total_orders' => $totalOrders,
+            'total_price' => $totalPrice,
+            'total_shipping_fee' => $totalShippingPrice,
+            'total_cost_shipping_price' => $totalCostShippingPrice,
+            'total_packing_price' => $totalPackingPrice,
+            'total_cost_price' => $totalCostPrice,
+            'net_profit' => $netProfit,
+        ]);
+    }
+
 
     public function getCustomOrderInfo(Request $request, $orderId)
     {
         try {
             // Fetch the order details
-            $order = Order::select('id', 'client_name', 'client_phone', 'total_price', 'Cost_shipping_price', 'city_name', 'area_name', 'address', 'client_notes', 'created_at')
+            $order = Order::select('id', 'client_name', 'client_phone', 'total_price', 'Cost_shipping_price', 'city_name', 'area_name', 'address', 'client_notes', 'created_at', 'is_discount', 'discount')
             ->with(['orderItems.varient.product']) // Load order items and related product details
             ->findOrFail($orderId);
 
@@ -48,6 +111,15 @@ class OrderController extends Controller
                 ];
             });
 
+            // Handle discount logic
+            $discountInfo = 'Not Applied';
+            $finalTotal = $order->total_price + $order->Cost_shipping_price;
+
+            if ($order->is_discount && !is_null($order->discount)) {
+                $discountInfo = $order->discount;
+                $finalTotal -= $order->discount; // Apply discount
+            }
+
             // Prepare the response
             $response = [
                 'Client Name' => $order->client_name,
@@ -56,7 +128,8 @@ class OrderController extends Controller
                 'Total items' => $totalItems,
                 'Total price' => $order->total_price,
                 'Shipping fee' => $order->Cost_shipping_price,
-                'Total' => $order->total_price + $order->Cost_shipping_price,
+                'Discount' => $discountInfo,
+                'Total' => $finalTotal,
                 'Client notes' => $order->client_notes,
                 'Order time' => $orderTime,
                 'Order number' => $orderNumber,

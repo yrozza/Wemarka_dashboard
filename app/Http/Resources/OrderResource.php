@@ -30,8 +30,10 @@ class OrderResource extends JsonResource
             'Shipping_price' => $this->Shipping_price,
             'packing' => $this->packing ? 'Provided' : 'Not provided', // "Provided" if true, else "Not provided"
             'packing_price' => $this->packing ? $this->packing_price : 0, // 0 if false
-            'total_price' => $this->total_price,
-            'order_items' => ItemResource::collection($this->whenLoaded('orderItems')),
+            'Is discount'=>$this->is_discount? 'Discount applied' : 'No discount applied',
+            'Discount'=>$this->discount?$this->discount:0,
+            'Total price' => $this->total_price,
+            'Order items' => ItemResource::collection($this->whenLoaded('orderItems')),
         ];
 
 
