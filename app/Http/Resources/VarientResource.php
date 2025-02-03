@@ -20,10 +20,13 @@ class VarientResource extends JsonResource
             'color' => $this->color,
             'volume' => $this->volume,
             'varient'=>$this->varient,
-            'Pcode'=>$this->Pcode,
+            'Sku code'=>$this->SKU_code,
             'weight'=>$this->weight,
-            'product_image'=>$this->product_image,
-            'stock'=>$this->stock
+            'Stock'=>$this->stock,
+            'Stock Status' =>$this->Stock_status,
+            'Cost price' =>$this->cost_price,
+            'Price' =>$this->price, 
+            'Selling Price'=> $this->Selling_price
         ];
     }
 }

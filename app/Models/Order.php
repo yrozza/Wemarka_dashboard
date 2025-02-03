@@ -22,6 +22,8 @@ class Order extends Model
         'client_name',
         'client_phone',
         'additional_phone',
+        'is_discount',
+        'discount',
         'Cost_shipping_price', 
         'Shipping_price',     
         'packing',             

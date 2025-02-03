@@ -11,8 +11,9 @@ class Varient extends Model
         'color',
         'volume',
         'varient',
-        'Pcode',
+        'Sku_code',
         'weight',
+        'Cost_price',
         'price',
         'product_image',
         'stock',
@@ -25,8 +26,9 @@ class Varient extends Model
 
     public function images()
     {
-        return $this->hasMany(Image::class);
+        return $this->hasMany(Image::class, 'varient_id'); // Explicitly define the foreign key
     }
+
 
     public function cartItems()
     {
