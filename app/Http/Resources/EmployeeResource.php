@@ -15,10 +15,14 @@ class EmployeeResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'Employee_name' => $this->Employee_name,
-            'Employee_phonenumber' => $this->Employee_phonenumber,
-            'Employee_email' => $this->Employee_email,
-            'Employee_role' => $this->Employee_role,
+            'ID' => $this->id,
+            'First Name' => $this->first_name,
+            'Last Name' => $this->last_name,
+            'Phone number' => $this->phone_number,
+            'Email' => $this->email,
+            'Role' => $this->role,
+            'Profile Pic' => $this->profile_pic ? url('storage/' . $this->profile_pic) : 'Not provided',
         ];
+
     }
 }

@@ -78,6 +78,58 @@ class OrderController extends Controller
     }
 
 
+
+    public function getSelectedOrderReport(Request $request)
+    {
+        $orderIds = $request->query('order_ids');
+
+        if (is_string($orderIds)) {
+            $orderIds = explode(',', $orderIds); // Convert comma-separated string to an array
+        } elseif (!$orderIds || !is_array($orderIds)) {
+            return response()->json(['error' => 'Please provide a valid array of order IDs'], 400);
+        }
+
+        // Fetch orders using Eloquent
+        $orders = Order::whereIn('id', $orderIds)->get();
+
+        // Calculate sum values using collection methods
+        $totalOrders = $orders->count();
+        $totalPrice = $orders->sum('total_price');
+        $totalShippingPrice = $orders->sum('Shipping_price');
+        $totalCostShippingPrice = $orders->sum('Cost_shipping_price');
+        $totalPackingPrice = $orders->sum('packing_price');
+
+        // Calculate total cost price by summing the cost price of order items
+        $totalCostPrice = $orders->flatMap(function ($order) {
+            return $order->orderItems; // Assuming orderItems relationship exists
+        })->sum(function ($item) {
+            return $item->varient->cost_price * $item->quantity; // Calculating cost based on the related variant
+        });
+
+        // Calculate net profit
+        $netProfit = $totalPrice - $totalCostPrice - $totalPackingPrice - $totalShippingPrice;
+
+        return response()->json([
+            'total_orders' => $totalOrders,
+            'total_price' => $totalPrice,
+            'total_shipping_fee' => $totalShippingPrice,
+            'total_cost_shipping_price' => $totalCostShippingPrice,
+            'total_packing_price' => $totalPackingPrice,
+            'total_cost_price' => $totalCostPrice,
+            'net_profit' => $netProfit,
+        ]);
+    }
+
+
+
+
+
+
+
+
+    
+
+
     public function getCustomOrderInfo(Request $request, $orderId)
     {
         try {

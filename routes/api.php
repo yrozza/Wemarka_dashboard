@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\BrandController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ItemController;
+use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\QRCodeController;
 use App\Http\Controllers\PDFController;
 use App\Http\Controllers\Api\CityController;
@@ -21,9 +22,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 // Middleware-protected user route
-Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
-    return $request->user();
-});
+// Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
+//     return $request->user();
+// });
 
 ////////////// Routes for clients
 Route::get('/clients/name/{client_name}', [ClientController::class, 'showByName']);
@@ -86,6 +87,11 @@ Route::apiResource('product.varient', VarientController::class)
     ->scoped(['varient' => 'id']);
 Route::post('/product/{product}/varient/{varient}/Add-Image', [VarientController::class, 'addImage']);
 Route::patch('/variant/{variantId}/edit-image/{imageId}', [VarientController::class, 'updateImage']);
+Route::delete('products/{product}/variants/select-destroy', [VarientController::class, 'selectDestroy']);
+Route::get('orders/selected-report', [OrderController::class, 'getSelectedOrderReport']);
+
+
+
 
 
 
@@ -123,7 +129,6 @@ Route::delete('orders/{id}', [OrderController::class, 'deleteOrder']);
 
 //////////////////////QR CODE
 Route::get('generate-qr/{order_id}', [QRCodeController::class, 'generateQRCode']);
-
 Route::get('/order/{orderId}/pdf', [PDFController::class, 'generatePdf']);
 
 
@@ -137,19 +142,39 @@ Route::get('/order/{orderId}/pdf', [PDFController::class, 'generatePdf']);
 //     Route::delete('/admin/delete-user/{id}', [AdminController::class, 'deleteUser']);
 // });
 
+    
+
 Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
-Route::middleware('auth:sanctum')->get('/user', [AuthController::class, 'getUser']);
 
-
-
-
-
-
-Route::get('email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])->name('verification.verify');
-Route::middleware(['auth:sanctum', 'verified'])->get('/user', function (Request $request) {
-    return response()->json($request->user());
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/user', [AuthController::class, 'getUser']);
+    Route::post('/logout', [AuthController::class, 'logout']);
 });
+
+Route::middleware('auth:sanctum')->patch('/user/update', [AuthController::class, 'updateProfile']);
+Route::middleware('auth:sanctum')->post('/change-password', [AuthController::class, 'changePassword']);
+Route::middleware('auth:sanctum')->post('/update-profile-pic', [AuthController::class, 'updateProfilePic']);
+
+
+
+
+
+
+
+
+// Route::middleware('auth:sanctum')->group(function () {
+//     // Route::get('/user', [UserController::class, 'show']); // Get user data
+//     Route::put('/user', [UserController::class, 'update']); // Update user data
+// });
+
+
+
+
+// Route::get('email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])->name('verification.verify');
+// Route::middleware(['auth:sanctum', 'verified'])->get('/user', function (Request $request) {
+//     return response()->json($request->user());
+// });
 
 
 // Route::post('send-email', [EmailController::class, 'sendEmail']);

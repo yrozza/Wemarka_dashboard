@@ -367,6 +367,34 @@ class VarientController extends Controller
         return response()->json(['message' => 'Variant deleted successfully'], 200);
     }
 
+    public function selectDestroy($product, Request $request)
+    {
+        // Validate the incoming request to ensure 'variant_ids' is an array of valid variant IDs
+        $request->validate([
+            'varient_ids' => 'required|array',
+            'varient_ids.*' => 'exists:varients,id', // Ensure each ID exists in the variants table
+        ]);
+
+        // Find all variants for the given product using the provided variant IDs
+        $variants = Varient::where('product_id', $product)
+            ->whereIn('id', $request->varient_ids)
+            ->get();
+
+        // Check if variants exist for the given product
+        if ($variants->isEmpty()) {
+            return response()->json([
+                'message' => 'No variants found for the specified product or variant IDs',
+            ], 404);
+        }
+
+        // Delete all selected variants
+        $variants->each->delete();
+
+        // Return a response
+        return response()->json(['message' => 'Variants deleted successfully'], 200);
+    }
+
+
     public function updateImage(Request $request, $variantId, $imageId)
     {
         try {
