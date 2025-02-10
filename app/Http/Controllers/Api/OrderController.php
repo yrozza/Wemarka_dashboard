@@ -5,8 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use App\Models\Varient;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
+use Mpdf\Mpdf;
+use App\Http\Controllers\PdfController; // Import PdfController 
 use App\Models\Order;
 use App\Http\Resources\OrderResource;
 
@@ -15,12 +19,23 @@ class OrderController extends Controller
     /**
      * Display a listing of the resource.
      */
+
+
     public function getOrderReport(Request $request)
     {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+        if (!Gate::allows('view-orders', $user)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
         $fromDate = $request->query('from_date');
         $toDate = $request->query('to_date');
         $filter = $request->query('filter');
 
+        // Set date range based on the filter
         if ($filter) {
             switch ($filter) {
                 case 'yesterday':
@@ -50,37 +65,41 @@ class OrderController extends Controller
             $toDate = Carbon::parse($toDate)->setHour(20)->setMinute(59)->setSecond(59);
         }
 
-        $orders = Order::whereBetween('created_at', [$fromDate, $toDate])->get();
+        // Get the orders within the specified date range
+        $orders = Order::whereBetween('created_at', [$fromDate, $toDate])->with('orderItems.varient')->get();
 
-        $totalOrders = $orders->count();
-        $totalPrice = $orders->sum('total_price');
-        $totalShippingPrice = $orders->sum('Shipping_price');
-        $totalCostShippingPrice = $orders->sum('Cost_shipping_price');
-        $totalPackingPrice = $orders->sum('packing_price');
+        // Gather report data
+        $reportData = [
+            'orders' => $orders, // ✅ Added orders to fix "Undefined array key 'orders'" error
+            'total_orders' => $orders->count(),
+            'total_price' => $orders->sum('total_price'),
+            'total_shipping_fee' => $orders->sum('Shipping_price'),
+            'total_packing_price' => $orders->sum('packing_price'),
+            'total_cost_price' => $orders->flatMap(function ($order) {
+                return $order->orderItems;
+            })->sum(function ($item) {
+                return $item->varient->cost_price * $item->quantity;
+            }),
+            'net_profit' => $orders->sum('total_price') - $orders->sum('total_cost_price') - $orders->sum('total_shipping_fee') - $orders->sum('total_packing_price'),
+        ];
 
-        $totalCostPrice = $orders->flatMap(function ($order) {
-            return $order->orderItems; // Assuming orderItems relation exists
-        })->sum(function ($item) {
-            return $item->varient->cost_price * $item->quantity; // Fixed "varient" typo
-        });
-
-        $netProfit = $totalPrice - $totalCostPrice - $totalPackingPrice - $totalShippingPrice;
-
-        return response()->json([
-            'total_orders' => $totalOrders,
-            'total_price' => $totalPrice,
-            'total_shipping_fee' => $totalShippingPrice,
-            'total_cost_shipping_price' => $totalCostShippingPrice,
-            'total_packing_price' => $totalPackingPrice,
-            'total_cost_price' => $totalCostPrice,
-            'net_profit' => $netProfit,
-        ]);
+        // Generate the PDF report
+        $pdfController = new PdfController();
+        return $pdfController->generateReportPdf($reportData);
     }
 
 
 
-    public function getSelectedOrderReport(Request $request)
+
+    public function generateOrderReport(Request $request)
     {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+        if (!Gate::allows('view-orders', $user)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
         $orderIds = $request->query('order_ids');
 
         if (is_string($orderIds)) {
@@ -125,14 +144,20 @@ class OrderController extends Controller
 
 
 
-
-
     
 
 
     public function getCustomOrderInfo(Request $request, $orderId)
     {
+        
         try {
+            $user = Auth::user();
+            if (!$user) {
+                return response()->json(['message' => 'Unauthenticated'], 401);
+            }
+            if (!Gate::allows('view-orders', $user)) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
             // Fetch the order details
             $order = Order::select('id', 'client_name', 'client_phone', 'total_price', 'Cost_shipping_price', 'city_name', 'area_name', 'address', 'client_notes', 'created_at', 'is_discount', 'discount')
             ->with(['orderItems.varient.product']) // Load order items and related product details
@@ -205,6 +230,14 @@ class OrderController extends Controller
     public function getOrderInfo(Request $request, $orderId)
     {
         try {
+            $user = Auth::user();
+            if(!$user){
+                return response()->json(['message' => 'Unauthenticated'], 401);
+            }
+            if (!Gate::allows('view-orders', $user)) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+            
             // Fetch the order by ID, including necessary fields
             $order = Order::select('id', 'client_id', 'client_name', 'client_phone', 'additional_phone', 'total_price', 'city_name', 'area_name', 'address', 'client_notes')
             ->findOrFail($orderId); // Retrieve the order or throw an error if not found
@@ -232,30 +265,49 @@ class OrderController extends Controller
 
 
 
-    
+
 
     public function getAllOrders(Request $request)
     {
-        // Set the default number of orders per page
-        $perPage = $request->query('per_page', 10); // 10 orders per page by default
+        // 🔒 Ensure user is authenticated
+        $user = Auth::user();
 
-        // Fetch paginated orders with their related order items
-        $orders = Order::with('orderItems') // Eager load orderItems
-        ->paginate($perPage);
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
 
-        // Return the paginated orders using OrderResource
+        // 🔒 Authorization: Only specific roles can access orders
+        if (!Gate::allows('view-orders', $user)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // 📌 Get paginated orders
+        $perPage = $request->query('per_page', 10);
+        $orders = Order::with('orderItems')->paginate($perPage);
+
+        // ✅ Return paginated orders as a JSON resource
         return OrderResource::collection($orders);
     }
 
-
     public function getOrderById($id)
     {
+
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        // 🔒 Authorization: Only specific roles can access orders
+        if (!Gate::allows('view-orders', $user)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
         // Find the order by its ID and load related orderItems and client
         $order = Order::with('orderItems')->find($id);
 
         // Check if the order exists
         if (!$order) {
-            return response()->json(['message' => 'Order not found.'], 404);
+            return response()->json(['message' => 'Orderrr not found.'], 404);
         }
 
         // Return the order using OrderResource
@@ -481,4 +533,5 @@ class OrderController extends Controller
             ], 500);
         }
     }
+    
 }

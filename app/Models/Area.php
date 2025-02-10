@@ -9,6 +9,8 @@ class Area extends Model
     protected $fillable = [
         'name',
         'shipping_price',
+        'Area_name',
+        'Price',
         'active',
         'city_id', // The foreign key for the city
     ];

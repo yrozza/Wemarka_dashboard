@@ -3,47 +3,31 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use Spatie\Permission\Models\Role;
 use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function assignRole(Request $request, $userId)
     {
-        //
-    }
+        $user = User::find(21);
+        $role = Role::where('name', 'super_admin')->where('guard_name', 'api')->first();
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
-    }
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        if ($role) {
+            $user->assignRole($role->name); // Use the name, not the object
+            return response()->json([
+                'message' => 'Role assigned successfully',
+                'roles' => $user->getRoleNames() // Retrieve roles
+            ]);
+        } else {
+            return response()->json(['message' => 'Role not found'], 404);
+        }
     }
 }
+
+

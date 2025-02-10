@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Varient;
 use App\Models\Brand;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 class ProductController extends Controller
 {
@@ -19,6 +21,13 @@ class ProductController extends Controller
      */
     public function index()
     {
+        $user =Auth::user();
+        if(!$user){
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+        if (!Gate::allows('view-orders', $user)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
         return ProductResource::collection(Product::paginate(10));
     }
 
@@ -88,6 +97,13 @@ class ProductController extends Controller
     public function showByName($Product_name, Request $request)
     {
         try {
+            $user = Auth::user();
+            if(!$user){
+                return response()->json(['message' => 'Unauthenticated'], 401);
+            }
+            if (!Gate::allows('view-orders', $user)) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
             // Get the 'per_page' parameter from the request, default to 10 if not present
             $perPage = $request->get('per_page', 10);
 
@@ -116,6 +132,16 @@ class ProductController extends Controller
 
     public function getAllProductsWithVariants(Request $request)
     {
+
+        $user= Auth::user();
+        if(!$user){
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+        if (!Gate::allows('view-orders', $user)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+
         $perPage = $request->get('per_page', 10);
 
         $products = DB::table('products')
@@ -130,6 +156,14 @@ class ProductController extends Controller
 
     public function show($id)
     {
+
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+        if (!Gate::allows('view-orders', $user)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
         $product = DB::table('products')
         ->leftJoin('varients', 'products.id', '=', 'varients.product_id')
         ->where('products.id', $id)
@@ -232,11 +266,18 @@ class ProductController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Product $product)
+    public function destroy(Request $request)
     {
-        $product->delete();
-        return response()->json([
-            'Message' => 'Deleted sucessfully'
+        $request->validate([
+            'product_ids' => 'required|array',
+            'product_ids.*' => 'exists:products,id',
         ]);
+
+        Product::whereIn('id', $request->product_ids)->delete();
+
+        return response()->json([
+            'message' => 'Products deleted successfully'
+        ], 200);
     }
+
 }

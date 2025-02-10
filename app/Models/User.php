@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Spatie\Permission\Traits\HasRoles;
 use Laravel\Sanctum\HasApiTokens;  // Add this import
 
 //implements MustVerifyEmail
@@ -13,6 +14,9 @@ use Laravel\Sanctum\HasApiTokens;  // Add this import
 class User extends Authenticatable  
 {
     use HasFactory, Notifiable, HasApiTokens;  // Add HasApiTokens here
+    use HasRoles;
+
+    protected $guard_name = 'api';  
 
     /**
      * The attributes that are mass assignable.
@@ -27,6 +31,16 @@ class User extends Authenticatable
         'password',
         'role',
     ];
+
+    public function roles()
+    {
+        return $this->belongsToMany(\Spatie\Permission\Models\Role::class);
+    }
+
+    public function permissions()
+    {
+        return $this->belongsToMany(\Spatie\Permission\Models\Permission::class);
+    }
 
     /**
      * The attributes that should be hidden for serialization.

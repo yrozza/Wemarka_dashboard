@@ -1,13 +1,12 @@
 <?php
-
 use App\Http\Controllers\Api\AreaController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BrandController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ItemController;
-use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\QRCodeController;
+use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\PDFController;
 use App\Http\Controllers\Api\CityController;
 use App\Http\Controllers\Api\ClientController;
@@ -18,7 +17,6 @@ use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\VarientController;
 use App\Http\Controllers\Api\ImageController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 // Middleware-protected user route
@@ -29,8 +27,11 @@ use Illuminate\Support\Facades\Route;
 ////////////// Routes for clients
 Route::get('/clients/name/{client_name}', [ClientController::class, 'showByName']);
 Route::apiResource('clients', ClientController::class);
-Route::apiResource('client.sources', SourceController::class); // Relation between clients and sources
-Route::put('/clients/{client}', [ClientController::class, 'update']); // Use PUT for updates
+Route::apiResource('client.sources', SourceController::class);
+Route::put('/clients/{client}', [ClientController::class, 'update']);
+Route::delete('clients', [ClientController::class, 'destroy']);
+
+
 
 ////////////// Routes for sources
 Route::apiResource('sources', SourceController::class);
@@ -61,7 +62,7 @@ Route::get('area/name/{Area_name}', [AreaController::class, 'showByName']);
 /////////////Routes for brands
 Route::apiResource('brand', BrandController::class);
 Route::get('brand/name/{Brand_name}', [BrandController::class, 'showByname']);
-Route::patch('brand/{brand}', [BrandController::class, 'updateOnlyone']);
+
 
 
 
@@ -75,10 +76,12 @@ Route::patch('category/{category}', [CategoryController::class, 'updateOnlyone']
 
 
 ////////////////////Routes for Products
-Route::apiResource('product', ProductController::class);
-Route::get('product/name/{Product_name}', [ProductController::class, 'showByName']);
-Route::get('/products-with-variants', [ProductController::class, 'getAllProductsWithVariants']);
-
+Route::middleware('auth:sanctum')->group(function () {
+    Route::apiResource('product', ProductController::class);
+    Route::get('/products-with-variants', [ProductController::class, 'getAllProductsWithVariants']);
+    Route::get('product/name/{Product_name}', [ProductController::class, 'showByName']);
+    Route::delete('/products', [ProductController::class, 'destroy']);
+});
 
 
 
@@ -88,7 +91,9 @@ Route::apiResource('product.varient', VarientController::class)
 Route::post('/product/{product}/varient/{varient}/Add-Image', [VarientController::class, 'addImage']);
 Route::patch('/variant/{variantId}/edit-image/{imageId}', [VarientController::class, 'updateImage']);
 Route::delete('products/{product}/variants/select-destroy', [VarientController::class, 'selectDestroy']);
-Route::get('orders/selected-report', [OrderController::class, 'getSelectedOrderReport']);
+Route::delete('/variants/DeleteSelectedvariants', [VarientController::class, 'DeleteSelectedvarients']);
+
+
 
 
 
@@ -117,14 +122,27 @@ Route::scopeBindings()->group(function () {
 
 Route::patch('carts/{cartId}/checkout', [CartController::class, 'checkout']); //In the Cart Controller
 Route::get('/order/{orderId}/ticket', [OrderController::class, 'getOrderInfo']);
-Route::get('orders', [OrderController::class, 'getAllOrders']);
-Route::get('orders/{id}', [OrderController::class, 'getOrderById']);
-Route::patch('orders/{id}/status', [OrderController::class, 'updateOrderStatus']);
-Route::patch('orders/{id}/shipping-status', [OrderController::class, 'updateShippingStatus']);
-Route::get('/order/{orderId}/customer-info', [OrderController::class, 'getCustomOrderInfo']);
-Route::get('/orders-report', [OrderController::class, 'getOrderReport']);
-Route::delete('orders/{id}', [OrderController::class, 'deleteOrder']);
 
+Route::middleware('auth:sanctum')->get('/orders', [OrderController::class, 'getAllOrders']);
+
+
+
+
+Route::get('order-selected/generate-report', [OrderController::class, 'generateOrderReport']);
+
+
+Route::middleware('auth:sanctum')->group(function(){
+    Route::get('/orders-report', [OrderController::class, 'getOrderReport']);
+    Route::get('order-selected/generate-report', [OrderController::class, 'generateOrderReport']);
+    Route::get('/order/{orderId}/ticket', [OrderController::class, 'getOrderInfo']);
+    Route::get('orders/{id}', [OrderController::class, 'getOrderById']); 
+    Route::get('/order/{orderId}/customer-info', [OrderController::class, 'getCustomOrderInfo']);
+    Route::get('/orders-report', [OrderController::class, 'getOrderReport']);
+    Route::patch('orders/{id}/status', [OrderController::class, 'updateOrderStatus']);
+    Route::patch('orders/{id}/shipping-status', [OrderController::class, 'updateShippingStatus']);
+
+    Route::delete('orders/{id}', [OrderController::class, 'deleteOrder']);
+});
 
 
 //////////////////////QR CODE
@@ -136,15 +154,13 @@ Route::get('/order/{orderId}/pdf', [PDFController::class, 'generatePdf']);
 
 ////////////////////////////////////////Routes for authentication
 
-// Route::middleware(['auth', 'admin'])->group(function () {
-//     Route::get('/admin/dashboard', [AdminController::class, 'dashboard']);
-//     Route::post('/admin/create-user', [AdminController::class, 'createUser']);
-//     Route::delete('/admin/delete-user/{id}', [AdminController::class, 'deleteUser']);
-// });
 
-    
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::post('/registeeeer', [AuthController::class, 'register']);
+});
 
-Route::post('register', [AuthController::class, 'register']);
+Route::post('/register', [UserController::class, 'register'])->middleware('auth:sanctum');
+
 Route::post('login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -159,25 +175,19 @@ Route::middleware('auth:sanctum')->post('/update-profile-pic', [AuthController::
 
 
 
+Route::middleware(['auth:sanctum', 'role:super-admin|admin'])->group(function () {
+    Route::post('/register', [AuthController::class, 'register']);
+});
 
 
 
 
-// Route::middleware('auth:sanctum')->group(function () {
-//     // Route::get('/user', [UserController::class, 'show']); // Get user data
-//     Route::put('/user', [UserController::class, 'update']); // Update user data
-// });
 
 
 
 
-// Route::get('email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])->name('verification.verify');
-// Route::middleware(['auth:sanctum', 'verified'])->get('/user', function (Request $request) {
-//     return response()->json($request->user());
-// });
 
 
-// Route::post('send-email', [EmailController::class, 'sendEmail']);
 
-// Route::post('email/verify/send',[EmailController::class, 'sendEmail']);
+
 

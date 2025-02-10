@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\AreaResource;
 use App\Models\City;
 use Illuminate\Http\Request;
 use App\Models\Area;
@@ -12,25 +13,15 @@ class AreaController extends Controller
     /**
      * Display a listing of the resource.
      */
-   
-
-    public function index()
+    public function index(Request $request)
     {
         try {
-            // Get all areas with their related cities
-            $areas = Area::with('city')->get();
+            // Get paginated areas with their related cities
+            $perPage = $request->query('per_page', 10); // Default 10 per page
+            $areas = Area::with('city')->paginate($perPage);
 
-            return response()->json([
-                'areas' => $areas->map(function ($area) {
-                    return [
-                        'id' => $area->id,
-                        'name' => $area->Area_name,
-                        'shipping_price' => $area->Price,
-                        'Active' => $area->Active ? 'Active' : 'Not active',
-                        'city_name' => $area->city->City_name ?? 'N/A', // Display city name or 'N/A' if no city found
-                    ];
-                }),
-            ]);
+            // Return paginated resource collection
+            return AreaResource::collection($areas);
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Internal Server Error',
@@ -38,6 +29,7 @@ class AreaController extends Controller
             ], 500);
         }
     }
+
 
 
     /**
@@ -51,23 +43,28 @@ class AreaController extends Controller
                 'Area_name' => 'required|string|unique:areas,Area_name|max:255',
                 'price' => 'required|numeric',
                 'active' => 'required|boolean',
-                'city_name' => 'required|string|exists:cities,City_name', // Check if the city name exists in cities table
+                'city_id' => 'required|integer', // Ensure city_id is an integer
             ]);
 
-            // Find the city by name
-            $city = City::where('City_name', $validated['city_name'])->first();
+            // Check if the city exists
+            $city = City::find($validated['city_id']);
+            if (!$city) {
+                return response()->json([
+                    'message' => 'City not found'
+                ], 404);
+            }
 
-            // Create a new Area with the found city_id
-            $area = new Area();
-            $area->Area_name = $validated['Area_name'];
-            $area->price = $validated['price'];
-            $area->active = $validated['active'];
-            $area->city_id = $city->id; // Assign the city_id based on the city name
-            $area->save();
+            // Create a new Area record
+            $area = Area::create([
+                'Area_name' => $validated['Area_name'],
+                'Price' => $validated['price'],
+                'active' => $validated['active'],
+                'city_id' => $validated['city_id'],
+            ]);
 
             return response()->json([
                 'message' => 'Area created successfully!',
-                'Area' => $area
+                'Area' => new AreaResource($area) // Return structured response
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
@@ -78,58 +75,24 @@ class AreaController extends Controller
     }
 
 
+
+
     /**
      * Display the specified resource.
      */
     public function show($id)
     {
         try {
-            $Area = Area::with('city')->find($id);
-        if(!$Area){
-            return response()->json([
-                'Message' => 'Area not found'
-            ],404);
-        }
-            return [
-                'id' => $Area->id,
-                'name' => $Area->Area_name,
-                'shipping_price' => $Area->Price,
-                'Active' => $Area->Acive ? 'Active' : 'Not active',
-                'city_name' => $Area->city->City_name ?? 'N/A', // Display city name or 'N/A' if no city found
-            ];
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Internal Server Error',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
+            $area = Area::with('city')->find($id);
 
-    public function showByName($Area)
-    {
-        try {
-            // Use get() to retrieve a collection of Areas
-            $areas = Area::with('city')->where('Area_name', 'LIKE', "%$Area%")->get();
-
-            // If no areas are found
-            if ($areas->isEmpty()) {
+            if (!$area) {
                 return response()->json([
-                    'Message' => 'Area not found'
+                    'message' => 'Area not found'
                 ], 404);
             }
 
-            // Loop through each area in the collection and return the data
-            $result = $areas->map(function ($area) {
-                return [
-                    'id' => $area->id,
-                    'name' => $area->Area_name,
-                    'shipping_price' => $area->Price,
-                    'Active' => $area->Active ? 'Active' : 'Not active',
-                    'city_name' => $area->city->City_name ?? 'N/A', // Display city name or 'N/A' if no city found
-                ];
-            });
+            return new AreaResource($area); // Return as a resource
 
-            return response()->json($result);
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Internal Server Error',
@@ -137,6 +100,33 @@ class AreaController extends Controller
             ], 500);
         }
     }
+
+
+    public function showByName($areaName)
+    {
+        try {
+            // Use pagination with LIKE search
+            $areas = Area::with('city')
+            ->where('Area_name', 'LIKE', "%$areaName%")
+            ->paginate(10); // Paginate with 10 results per page
+
+            // If no areas are found, return a 404 response
+            if ($areas->isEmpty()) {
+                return response()->json([
+                    'message' => 'No matching areas found'
+                ], 404);
+            }
+
+            // Return paginated resource response
+            return AreaResource::collection($areas);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Internal Server Error',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
 
 
     /**
@@ -145,37 +135,22 @@ class AreaController extends Controller
     public function update(Request $request, $id)
     {
         try {
-            // Validate incoming request
+            // Validate the request
             $validated = $request->validate([
-                'Area_name' => 'required|string|max:255|unique:areas,Area_name,' . $id,
-                'price' => 'required|numeric',
-                'active' => 'required|boolean',
-                'city_name' => 'required|string|exists:cities,City_name',
+                'Area_name' => 'sometimes|string|max:255|unique:areas,Area_name,' . $id,
+                'price' => 'sometimes|numeric',
+                'active' => 'sometimes|boolean',
+                'city_id' => 'sometimes|exists:cities,id',
             ]);
 
-            // Find the area by ID
-            $area = Area::find($id);
+            // Find the area
+            $area = Area::findOrFail($id);
 
-            // Check if the area exists
-            if (!$area) {
-                return response()->json(['message' => 'Area not found'], 404);
-            }
+            // Update the area with only provided values
+            $area->update($validated);
 
-            // Find the city by name
-            $city = City::where('City_name', $validated['city_name'])->first();
-
-            // Update the area
-            $area->Area_name = $validated['Area_name'];
-            $area->price = $validated['price'];
-            $area->active = $validated['active'];
-            $area->city_id = $city->id; // Update the city_id based on city name
-            $area->save();
-
-            // Return the updated area
-            return response()->json([
-                'message' => 'Area updated successfully!',
-                'Area' => $area
-            ]);
+            // Return updated area with resource
+            return new AreaResource($area);
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Internal Server Error',
@@ -184,65 +159,7 @@ class AreaController extends Controller
         }
     }
 
-    // public function updateOnlyOne(Request $request, $id)
-    // {
-    //     try {
-    //         // Find the Area by ID
-    //         $area = Area::find($id);
-    //         if (!$area) {
-    //             return response()->json([
-    //                 'Message' => 'Not found'
-    //             ], 404);
-    //         }
 
-    //         // Check if the request has any data
-    //         if (!$request->all()) {
-    //             return response()->json([
-    //                 'Message' => 'No input provided'
-    //             ], 400);
-    //         }
-
-    //         // Validate the input
-    //         $validated = $request->validate([
-    //             'Area_name' => 'sometimes|string|max:255|unique:areas,Area_name,' . $id,
-    //             'price' => 'sometimes|numeric',
-    //             'active' => 'sometimes|boolean',
-    //             'city_name' => 'sometimes|string|exists:cities,City_name',  // Ensures the city_name exists in the cities table
-    //         ]);
-
-    //         // If city_name is provided, update the foreign key relationship
-    //         if (isset($validated['city_name'])) {
-    //             // Retrieve the City ID based on the provided city_name
-    //             $city = City::where('City_name', $validated['city_name'])->first();
-    //             if ($city) {
-    //                 $area->city_id = $city->id; // Assuming you have a `city_id` column in `Area` table
-    //             } else {
-    //                 return response()->json([
-    //                     'Message' => 'Invalid city_name provided'
-    //                 ], 400);
-    //             }
-    //         }
-
-    //         // Update the record
-    //         $area->update($validated);
-
-    //         // Check if changes were actually made
-    //         if (!$area->wasChanged()) {
-    //             return response()->json([
-    //                 'Message' => 'No changes were detected'
-    //             ], 400);
-    //         }
-
-    //         return response()->json([
-    //             'Message' => 'Updated successfully'
-    //         ]);
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'message' => 'Internal Server Error',
-    //             'error' => $e->getMessage(),
-    //         ], 500);
-    //     }
-    // }
 
 
     /**

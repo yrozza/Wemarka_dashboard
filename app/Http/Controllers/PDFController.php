@@ -7,7 +7,7 @@ namespace App\Http\Controllers;
 use Mpdf\Mpdf;
 use App\Models\Order;
 use Illuminate\Http\Request;
-
+use Illuminate\Support\Facades\View;
 class PDFController extends Controller
 {
     public function generatePdf($orderId)
@@ -86,4 +86,61 @@ class PDFController extends Controller
             ], 404);
         }
     }
+
+
+
+
+    public function generateReportPdf($data)
+    {
+        try {
+            // Initialize mPDF
+            $mpdf = new Mpdf();
+
+            // Generate HTML from the Blade view (passing data correctly)
+            $html = view('pdf.report', $data)->render();
+
+            // Write HTML to PDF
+            $mpdf->WriteHTML($html);
+
+            // Output PDF (download the file)
+            return response()->stream(
+                function () use ($mpdf) {
+                    $mpdf->Output('order_report.pdf', 'D'); // 'D' for download
+                },
+                200,
+                [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'attachment; filename="order_report.pdf"',
+                ]
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'An error occurred while generating the report',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+    public function generateOrderReportPdf($orderData)
+    {
+        try {
+            $pdf = new \Mpdf\Mpdf();
+
+            // Pass the entire data array to the Blade template
+            $html = view('pdf.report', ['data' => $orderData])->render();
+
+            $pdf->WriteHTML($html);
+
+            return response()->streamDownload(function () use ($pdf) {
+                echo $pdf->Output('', 'S');
+            }, 'order_report.pdf');
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+
 }
+
+

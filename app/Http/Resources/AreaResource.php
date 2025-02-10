@@ -12,13 +12,16 @@ class AreaResource extends JsonResource
      *
      * @return array<string, mixed>
      */
-    public function toArray(Request $request): array
+
+    public function toArray($request)
     {
         return [
-            'Area_name' => $this->Area_name,
-            'Active' => $this->Active ? 'Active' : 'Not active',
+            'Area' => $this->Area_name,
+            'Active' => $this->active ? 'Active' : 'Not active',
             'Price' => $this->Price,
-            
+            'City' => $this->city ? $this->city->City_name : null, // Include city name
         ];
     }
+
+    
 }

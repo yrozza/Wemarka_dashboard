@@ -349,50 +349,77 @@ class VarientController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy($product, $variant)
-    {
-        // Find the variant scoped to the product
-        $variant = Varient::where('product_id', $product)->find($variant);
-
-        if (!$variant) {
-            return response()->json([
-                'message' => 'Variant not found for the specified product , check your product or varient ID'
-            ], 404);
-        }
-
-        // Delete the variant (cascading deletes will handle related images)
-        $variant->delete();
-
-        // Return a response
-        return response()->json(['message' => 'Variant deleted successfully'], 200);
-    }
-
     public function selectDestroy($product, Request $request)
     {
-        // Validate the incoming request to ensure 'variant_ids' is an array of valid variant IDs
-        $request->validate([
-            'varient_ids' => 'required|array',
-            'varient_ids.*' => 'exists:varients,id', // Ensure each ID exists in the variants table
-        ]);
 
-        // Find all variants for the given product using the provided variant IDs
-        $variants = Varient::where('product_id', $product)
-            ->whereIn('id', $request->varient_ids)
-            ->get();
+        try {
+            // Validate the incoming request to ensure 'variant_ids' is an array of valid variant IDs
+            $request->validate([
+                'varient_ids' => 'required|array',
+                'varient_ids.*' => 'exists:varients,id', // Ensure each ID exists in the variants table
+            ]);
 
-        // Check if variants exist for the given product
-        if ($variants->isEmpty()) {
+            // Find all variants for the given product using the provided variant IDs
+            $variants = Varient::where('product_id', $product)
+                ->whereIn('id', $request->varient_ids)
+                ->get();
+
+            // Check if variants exist for the given product
+            if ($variants->isEmpty()) {
+                return response()->json([
+                    'message' => 'No variants found for the specified product or variant IDs',
+                ], 404);
+            }
+
+            // Delete all selected variants
+            $variants->each->delete();
+
+            // Return a response
+            return response()->json(['message' => 'Variants deleted successfully'], 200);
+        } catch (\Exception $e) {
+            // Handle other exceptions
             return response()->json([
-                'message' => 'No variants found for the specified product or variant IDs',
-            ], 404);
+                'message' => 'An error occurred',
+                'error' => $e->getMessage(),
+            ], 500);
         }
-
-        // Delete all selected variants
-        $variants->each->delete();
-
-        // Return a response
-        return response()->json(['message' => 'Variants deleted successfully'], 200);
+        
     }
+
+
+    public function DeleteSelectedvarients(Request $request)
+    {
+        try {
+            // Validate the incoming request to ensure 'variant_ids' is an array of valid variant IDs
+            $request->validate([
+                'varient_ids' => 'required|array',
+                'varient_ids.*' => 'exists:varients,id', // Ensure each ID exists in the variants table
+            ]);
+
+            // Fetch the variants based on provided IDs
+            $variants = Varient::whereIn('id', $request->varient_ids)->get();
+
+            // Check if any variants were found
+            if ($variants->isEmpty()) {
+                return response()->json([
+                    'message' => 'No variants found for the specified IDs',
+                ], 404);
+            }
+
+            // Delete all selected variants
+            $variants->each->delete();
+
+            // Return a response
+            return response()->json(['message' => 'Variants deleted successfully'], 200);
+        } catch (\Exception $e) {
+            // Handle other exceptions
+            return response()->json([
+                'message' => 'An error occurred',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
 
 
     public function updateImage(Request $request, $variantId, $imageId)

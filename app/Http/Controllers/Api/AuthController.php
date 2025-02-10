@@ -8,6 +8,8 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use App\Models\User;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -18,52 +20,56 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         try {
-            // Validate the request
+            // 🔒 Get authenticated user
+            $authUser = Auth::user();
+
+            // 🔒 Check if the authenticated user is a super_admin or admin
+            if (!$authUser || !in_array($authUser->role, ['super_admin', 'admin'])) {
+                return response()->json(['message' => 'Unauthorized. Only Super Admin or Admin can register users.'], 403);
+            }
+
+            // ✅ Validate request data
             $validated = $request->validate([
                 'first_name' => 'required|string|max:255',
                 'last_name' => 'required|string|max:255',
-                'email' => 'required|string|email|max:255',
+                'email' => 'required|string|email|max:255|unique:users,email',
                 'password' => 'required|string|min:8|confirmed',
                 'phone_number' => 'nullable|string|max:255',
-                'role' => 'nullable|string|max:255',
-                'profile_pic' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048', // Add validation for the image
+                'role' => 'nullable|string|in:super_admin,admin,data_analyst,customer_service,warehouse,employee', // Can be any valid role, defaults to "employee"
+                'profile_pic' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             ]);
 
-            // Handle the file upload
-            $profilePicPath = null;
-            if ($request->hasFile('profile_pic')) {
-                // Store the file in the 'profile_pics' folder
-                $profilePicPath = $request->file('profile_pic')->store('profile_pics', 'public');
-            }
+            // ✅ Handle profile picture upload
+            $profilePicPath = $request->hasFile('profile_pic')
+            ? $request->file('profile_pic')->store('profile_pics', 'public')
+            : null;
 
-            // Insert the user record
-            DB::table('users')->insert([
+            // ✅ Assign the role (default to 'employee' if none provided)
+            $role = $validated['role'] ?? 'employee';
+
+            // ✅ Create the new user
+            $user = User::create([
                 'first_name' => $validated['first_name'],
                 'last_name' => $validated['last_name'],
                 'email' => $validated['email'],
                 'password' => Hash::make($validated['password']),
                 'phone_number' => $validated['phone_number'] ?? null,
-                'role' => $validated['role'] ?? 'employee',
-                'profile_pic' => $profilePicPath,  // Save the file path in the database
-                'created_at' => now(),
-                'updated_at' => now(),
+                'role' => $role, // Assign selected role or default to "employee"
+                'profile_pic' => $profilePicPath,
             ]);
 
-            // Retrieve the newly inserted user
-            $user = DB::table('users')->where('email', $validated['email'])->first();
-
-            // Generate a URL to access the stored file
-            $profilePicUrl = $profilePicPath ? Storage::url($profilePicPath) : null;
-
+            // ✅ Return successful response
             return response()->json([
-                'user' => $user,
-                'profile_pic_url' => $profilePicUrl,
                 'message' => 'User registered successfully',
+                'user' => $user,
+                'profile_pic_url' => $profilePicPath ? asset("storage/$profilePicPath") : null,
             ], 201);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Error registering user', 'error' => $e->getMessage()], 500);
         }
     }
+
+
 
 
 
@@ -234,5 +240,19 @@ class AuthController extends Controller
         }
     }
 
+    public function checkManageProductsPermission()
+    {
+        $user = Auth::user(); // Get the authenticated user
+
+        if (Gate::allows('manage-products')) {
+            return response()->json([
+                'message' => 'You have permission to manage products.'
+            ], 200);
+        } else {
+            return response()->json([
+                'message' => 'Unauthorized. You do not have permission.'
+            ], 403);
+        }
+    }
     
 }

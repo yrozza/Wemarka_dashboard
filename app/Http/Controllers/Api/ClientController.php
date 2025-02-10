@@ -239,14 +239,40 @@ class ClientController extends Controller
 
 
 
-    
-    public function destroy(Client $client)
+
+    public function destroy(Request $request, $client = null)
     {
-        $client->delete();
+        try {
+            // If $client is passed as a parameter, delete the specific client
+            if ($client) {
+                $client = Client::findOrFail($client); // Find client by ID or throw 404 if not found
+                $client->delete();
+                return response()->json([
+                    'message' => 'Client deleted successfully'
+                ], 200);
+            }
 
-        return response()->json([
-            'message'=>'Client deleted successfully'
-        ]);
+            // If no specific client is provided, proceed with bulk deletion
+            $request->validate([
+                'client_ids' => 'required|array',
+                'client_ids.*' => 'exists:clients,id',
+            ]);
 
+            // Attempt to delete the selected clients
+            Client::whereIn('id', $request->client_ids)->delete();
+
+            return response()->json([
+                'message' => 'Clients deleted successfully'
+            ], 200);
+        } catch (\Exception $e) {
+            // Return a response with an error message if something goes wrong
+            return response()->json([
+                'message' => 'An error occurred while deleting clients',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
+
+
+
 }

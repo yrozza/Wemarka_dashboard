@@ -15,8 +15,9 @@ class BrandController extends Controller
      */
     public function index()
     {
-        return BrandResource::collection(Brand::all());
+        return BrandResource::collection(Brand::paginate(10)); // Paginate with 10 items per page
     }
+
 
     /**
      * Store a newly created resource in storage.
@@ -104,22 +105,21 @@ class BrandController extends Controller
     {
         try {
             $validated = $request->validate([
-                'Brand_name' => 'required|string|unique:brands,Brand_name|max:255',
-                'Company_address' => 'required|string|max:255',
-                'Active' => 'required|boolean'
+                'Brand_name' => 'sometimes|string|max:255|unique:brands,Brand_name,' . $brand->id,
+                'Company_address' => 'sometimes|string|max:255',
+                'Active' => 'sometimes|boolean'
             ]);
 
-            $brand -> update($validated);
+            $brand->update($validated);
 
             if (!$brand->wasChanged()) {
-                // If no changes were made, return a message
                 return response()->json([
                     'message' => 'Nothing has changed'
                 ]);
             }
 
             return response()->json([
-                'Message' => 'Update sucessfully',
+                'Message' => 'Updated successfully',
                 'data' => new BrandResource($brand)
             ]);
         } catch (\Exception $e) {
@@ -129,31 +129,7 @@ class BrandController extends Controller
             ], 500);
         }
     }
-    public function updateOnlyOne(Request $request, $id)
-    {
-        try {
-            $brand = Brand::find($id);
-            if (!$brand) {
-                return response()->json([
-                    'Message' => 'Not found'
-                ], 404);
-            }
-            $validated = $request->validate([
-                'Brand_name' => 'sometimes|max:255',
-                'Company_address' => 'sometimes|string|max:255',
-                'Active' => 'sometimes|boolean'
-            ]);
-            $brand->update($validated);
-            return response()->json([
-                'Message' => 'Updated successfully'
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Internal Server Error',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
+
 
     /**
      * Remove the specified resource from storage.
