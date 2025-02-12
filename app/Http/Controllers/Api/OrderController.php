@@ -23,11 +23,7 @@ class OrderController extends Controller
 
     public function getOrderReport(Request $request)
     {
-        $user = Auth::user();
-        if (!$user) {
-            return response()->json(['message' => 'Unauthenticated'], 401);
-        }
-        if (!Gate::allows('view-orders', $user)) {
+        if (!Gate::allows('viewAny', Order::class)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -93,11 +89,7 @@ class OrderController extends Controller
 
     public function generateOrderReport(Request $request)
     {
-        $user = Auth::user();
-        if (!$user) {
-            return response()->json(['message' => 'Unauthenticated'], 401);
-        }
-        if (!Gate::allows('view-orders', $user)) {
+        if (!Gate::allows('viewAny', Order::class)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
         $orderIds = $request->query('order_ids');
@@ -151,11 +143,7 @@ class OrderController extends Controller
     {
         
         try {
-            $user = Auth::user();
-            if (!$user) {
-                return response()->json(['message' => 'Unauthenticated'], 401);
-            }
-            if (!Gate::allows('view-orders', $user)) {
+            if (!Gate::allows('viewAny', Order::class)) {
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
             // Fetch the order details
@@ -199,18 +187,18 @@ class OrderController extends Controller
 
             // Prepare the response
             $response = [
-                'Client Name' => $order->client_name,
-                'Client Phone' => $order->client_phone,
-                'Shipping address' => $shippingAddress,
-                'Total items' => $totalItems,
-                'Total price' => $order->total_price,
-                'Shipping fee' => $order->Cost_shipping_price,
-                'Discount' => $discountInfo,
-                'Total' => $finalTotal,
-                'Client notes' => $order->client_notes,
-                'Order time' => $orderTime,
-                'Order number' => $orderNumber,
-                'Products' => $productDetails // Include product names with quantities
+                'client_name' => $order->client_name,
+                'client_phonenumber' => $order->client_phone,
+                'shipping_address' => $shippingAddress,
+                'total_items' => $totalItems,
+                'total_price' => $order->total_price,
+                'shipping_fee' => $order->Cost_shipping_price,
+                'discount' => $discountInfo,
+                'total' => $finalTotal,
+                'client_notes' => $order->client_notes,
+                'order_time' => $orderTime,
+                'order_number' => $orderNumber,
+                'products' => $productDetails // Include product names with quantities
             ];
 
             return response()->json($response);
@@ -230,13 +218,10 @@ class OrderController extends Controller
     public function getOrderInfo(Request $request, $orderId)
     {
         try {
-            $user = Auth::user();
-            if(!$user){
-                return response()->json(['message' => 'Unauthenticated'], 401);
-            }
-            if (!Gate::allows('view-orders', $user)) {
+            if (!Gate::allows('viewAny', Order::class)) {
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
+
             
             // Fetch the order by ID, including necessary fields
             $order = Order::select('id', 'client_id', 'client_name', 'client_phone', 'additional_phone', 'total_price', 'city_name', 'area_name', 'address', 'client_notes')
@@ -269,15 +254,7 @@ class OrderController extends Controller
 
     public function getAllOrders(Request $request)
     {
-        // 🔒 Ensure user is authenticated
-        $user = Auth::user();
-
-        if (!$user) {
-            return response()->json(['message' => 'Unauthenticated'], 401);
-        }
-
-        // 🔒 Authorization: Only specific roles can access orders
-        if (!Gate::allows('view-orders', $user)) {
+        if (!Gate::allows('viewAny', Order::class)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -292,16 +269,10 @@ class OrderController extends Controller
     public function getOrderById($id)
     {
 
-        $user = Auth::user();
-
-        if (!$user) {
-            return response()->json(['message' => 'Unauthenticated'], 401);
-        }
-
-        // 🔒 Authorization: Only specific roles can access orders
-        if (!Gate::allows('view-orders', $user)) {
+        if (!Gate::allows('viewAny', Order::class)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
+
         // Find the order by its ID and load related orderItems and client
         $order = Order::with('orderItems')->find($id);
 

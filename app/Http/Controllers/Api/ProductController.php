@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\Category;
 use Illuminate\Support\Facades\DB;
 use App\Models\Varient;
+use App\Policies\ProductPolicy;
 use App\Models\Brand;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,16 +22,12 @@ class ProductController extends Controller
      */
     public function index()
     {
-        $user =Auth::user();
-        if(!$user){
-            return response()->json(['message' => 'Unauthenticated'], 401);
-        }
-        if (!Gate::allows('view-orders', $user)) {
+        if (!Gate::allows('viewAny', Product::class)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
+
         return ProductResource::collection(Product::paginate(10));
     }
-
 
     /**
      * Store a newly created resource in storage.
@@ -97,11 +94,7 @@ class ProductController extends Controller
     public function showByName($Product_name, Request $request)
     {
         try {
-            $user = Auth::user();
-            if(!$user){
-                return response()->json(['message' => 'Unauthenticated'], 401);
-            }
-            if (!Gate::allows('view-orders', $user)) {
+            if (!Gate::allows('viewAny', Product::class)) {
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
             // Get the 'per_page' parameter from the request, default to 10 if not present
@@ -133,11 +126,7 @@ class ProductController extends Controller
     public function getAllProductsWithVariants(Request $request)
     {
 
-        $user= Auth::user();
-        if(!$user){
-            return response()->json(['message' => 'Unauthenticated'], 401);
-        }
-        if (!Gate::allows('view-orders', $user)) {
+        if (!Gate::allows('viewAny', Product::class)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -157,11 +146,7 @@ class ProductController extends Controller
     public function show($id)
     {
 
-        $user = Auth::user();
-        if (!$user) {
-            return response()->json(['message' => 'Unauthenticated'], 401);
-        }
-        if (!Gate::allows('view-orders', $user)) {
+        if (!Gate::allows('viewAny', Product::class)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
         $product = DB::table('products')

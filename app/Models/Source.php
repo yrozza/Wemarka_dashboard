@@ -12,11 +12,12 @@ class Source extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'Source_name',
-        'Active'
+        'source_name', // Renamed to follow Laravel conventions
+        'active'
     ];
-    
-    public function clients(){
-        return $this->hasMany(client::class);
+
+    public function clients()
+    {
+        return $this->hasMany(Client::class);
     }
 }

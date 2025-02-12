@@ -12,7 +12,7 @@ class ClientResource extends JsonResource
      *
      * @return array<string, mixed>
      */
-    public function toArray(Request $request): array
+    public function toArray($request)
     {
         return [
             'id' => $this->id,
@@ -20,12 +20,11 @@ class ClientResource extends JsonResource
             'age' => $this->client_age,
             'email' => $this->client_email,
             'phone_number' => $this->client_phonenumber,
-            'area' => $this->client_area,
-            'city' => $this->client_city,
-            'source_name' => $this->source ? $this->source->Source_name : null, // Get the source name
-            'created_at' => $this->created_at,
-            'updated_at' => $this->updated_at,
+            'area' => $this->area_name ?? 'Area not provided', // Fetch from relationship
+            'city' => $this->city_name?? 'City not provided', // Fetch from relationship
+            'source_name' => $this->source?->Source_name ?? 'Unknown Source', // Handle NULL case
         ];
     }
+
 
 }

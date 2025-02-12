@@ -32,6 +32,15 @@ class User extends Authenticatable
         'role',
     ];
 
+    public function hasRole($roles)
+    {
+        if (is_string($roles)) {
+            return $this->role === $roles;
+        }
+
+        return in_array($this->role, $roles);
+    }
+
     public function roles()
     {
         return $this->belongsToMany(\Spatie\Permission\Models\Role::class);

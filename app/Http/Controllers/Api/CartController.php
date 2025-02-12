@@ -10,6 +10,9 @@ use App\Models\City;
 use App\Models\OrderItem;
 use App\Models\client;
 use App\Models\Varient;
+use Illuminate\Support\Facades\Gate;
+
+
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
@@ -51,6 +54,9 @@ class CartController extends Controller
     public function store(Request $request)
     {
         try {
+            if (Gate::denies('create', Cart::class)) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
             // Validate incoming request
             $validated = $request->validate([
                 'client_id' => 'required|exists:clients,id', // Ensure the client exists
@@ -259,9 +265,10 @@ class CartController extends Controller
     public function update(Request $request, string $id)
     {
         try {
+            
             // Find the cart by its ID
             $cart = Cart::find($id);
-
+            Gate::authorize('update', $cart);
             // If the cart does not exist, return a 404 error
             if (!$cart) {
                 return response()->json([

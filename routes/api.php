@@ -25,11 +25,15 @@ use Illuminate\Support\Facades\Route;
 // });
 
 ////////////// Routes for clients
-Route::get('/clients/name/{client_name}', [ClientController::class, 'showByName']);
-Route::apiResource('clients', ClientController::class);
-Route::apiResource('client.sources', SourceController::class);
-Route::put('/clients/{client}', [ClientController::class, 'update']);
-Route::delete('clients', [ClientController::class, 'destroy']);
+
+Route::middleware('auth:sanctum') -> group(function(){
+    Route::get('/clients/name/{client_name}', [ClientController::class, 'showByName']);
+    Route::apiResource('clients', ClientController::class);
+    Route::apiResource('client.sources', SourceController::class);
+    Route::put('/clients/{client}', [ClientController::class, 'update']);
+    Route::delete('clients', [ClientController::class, 'destroy']);
+});
+
 
 
 
@@ -109,13 +113,15 @@ Route::apiResource('products.variants.images', ImageController::class)
 
 
 ////////////////////////////Routes For Cart
+Route::middleware('auth:sanctum')->group(function(){
 Route::apiResource('carts', CartController::class);
 Route::get('carts/ClientName/{client_name}',[CartController::class, 'showByName']);
-
-
+Route::patch('carts/{cartId}/checkout', [CartController::class, 'checkout']);
 Route::scopeBindings()->group(function () {
-    Route::apiResource('cart.cartItem', ItemController::class);
+Route::apiResource('cart.cartItem', ItemController::class);
 });
+});
+
 
 
 /////////////////////////////Routes for Order

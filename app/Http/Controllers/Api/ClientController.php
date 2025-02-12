@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ClientResource;
 use App\Models\client;
 use App\Models\Source;
 use App\Models\City;
 use App\Models\Area;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
@@ -15,32 +17,22 @@ class ClientController extends Controller
     /**
      * Display a listing of the resource.
      */
+
     public function index(Request $request)
     {
-        // Set the default number of clients per page
-        $perPage = $request->query('per_page', 10); // Default to 10 per page
+        // Authorization check
+        if (!Gate::allows('viewAny', Client::class)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
 
-        // Use Query Builder to fetch clients with pagination
-        $clients = DB::table('clients')
-        ->leftJoin('sources', 'clients.source_id', '=', 'sources.id') // Join the 'sources' table
-        ->select(
-            'clients.id',
-            // Use conditional statements to check if area_id or city_id is null
-            DB::raw("IFNULL(clients.area_id, 'Area not provided') as client_area"),
-            DB::raw("IFNULL(clients.city_id, 'City not provided') as client_city"),
-            'clients.client_name',
-            'clients.client_age',
-            'clients.client_email',
-            'clients.client_phonenumber',
-            'sources.Source_name', // Select the 'Source_name' from the sources table
-            DB::raw("IFNULL(clients.source_link, 'Source link not provided') as source_link"), // Handle null for source_link
-            'clients.created_at',
-            'clients.updated_at'
-        )
-            ->paginate($perPage); // Apply pagination
+        // Get the number of clients per page (default to 10)
+        $perPage = $request->query('per_page', 10);
 
-        // Return the response with the paginated data
-        return response()->json($clients);
+        // Retrieve clients with related data
+        $clients = Client::with(['source', 'area', 'city'])->paginate($perPage);
+
+        // Return clients using the resource
+        return ClientResource::collection($clients);
     }
 
 
@@ -52,6 +44,8 @@ class ClientController extends Controller
      */
     public function store(Request $request)
     {
+        // Check if the user is authorized to create a client
+        Gate::authorize('create', Client::class);
         // Validate incoming request
         $validated = $request->validate([
             'client_name' => 'required|string|max:255|unique:clients,client_name',
@@ -96,36 +90,28 @@ class ClientController extends Controller
      */
 
 
+
+
     public function showByName($client_name)
     {
-        // Use Query Builder to fetch the data with a JOIN on the 'sources' table
-        $client = DB::table('clients')
-        ->leftJoin('sources', 'clients.source_id', '=', 'sources.id') // Join the 'sources' table
-        ->select(
-            'clients.id',
-            // Use conditional statements to check if area_id or city_id is null
-            DB::raw("IFNULL(clients.area_id, 'Area not provided') as client_area"),
-            DB::raw("IFNULL(clients.city_id, 'City not provided') as client_city"),
-            'clients.client_name',
-            'clients.client_age',
-            'clients.client_email',
-            'clients.client_phonenumber',
-            'sources.Source_name', // Select the 'Source_name' from the sources table
-            DB::raw("IFNULL(clients.source_link, 'Source link not provided') as source_link"), // Handle null for source_link
-            'clients.created_at',
-            'clients.updated_at'
-        )
-            ->where('clients.client_name', 'LIKE', "%$client_name%") // Search for client name using LIKE
-            ->get(); // Get all matching records
+        // Check authorization using policy
+        Gate::authorize('viewAny', Client::class);
+
+        // Fetch clients by name with relationships
+        $clients = Client::with(['source'])
+        ->where('client_name', 'LIKE', "%$client_name%")
+        ->get();
 
         // Check if clients exist
-        if ($client->isEmpty()) {
+        if ($clients->isEmpty()) {
             return response()->json(['message' => 'No clients found'], 404);
         }
 
-        // Return the response with the data
-        return response()->json($client);
+        // Return results using a Resource
+        return ClientResource::collection($clients);
     }
+
+
 
 
 
@@ -133,34 +119,24 @@ class ClientController extends Controller
 
     public function show($id)
     {
-        // Use Query Builder to fetch the data with a JOIN on the 'sources' table
-        $clients = DB::table('clients')
-        ->leftJoin('sources', 'clients.source_id', '=', 'sources.id') // Join the 'sources' table
-        ->select(
-            'clients.id',
-            // Use conditional statements to check if area_id or city_id is null
-            DB::raw("IFNULL(clients.area_id, 'Area not provided') as client_area"),
-            DB::raw("IFNULL(clients.city_id, 'City not provided') as client_city"),
-            'clients.client_name',
-            'clients.client_age',
-            'clients.client_email',
-            'clients.client_phonenumber',
-            'sources.Source_name', // Select the 'Source_name' from the sources table
-            DB::raw("IFNULL(clients.source_link, 'Source link not provided') as source_link"), // Handle null for source_link
-            'clients.created_at',
-            'clients.updated_at'
-        )
-            ->where('clients.id', $id) // Correctly use the variable
-            ->get(); // Get all matching records
 
-        // Check if clients exist
-        if ($clients->isEmpty()) {
-            return response()->json(['message' => 'No clients found'], 404);
+        $client = Client::with('source')->find($id);
+
+        if (!$client) {
+            return response()->json(['message' => 'Client not found'], 404);
         }
 
-        // Return the response with the data
-        return response()->json($clients);
+        if (!Gate::allows('view', $client)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        return new ClientResource($client);
     }
+
+
+
+
+
 
 
 
@@ -170,6 +146,8 @@ class ClientController extends Controller
      */
     public function update(Request $request, $id)
     {
+
+        
         // Validate incoming request
         $validated = $request->validate([
             'client_name' => 'nullable|string|max:255|unique:clients,client_name,' . $id,
@@ -184,6 +162,7 @@ class ClientController extends Controller
 
         // Find the client by ID
         $client = Client::find($id);
+        Gate::authorize('update', $client);
 
         if (!$client) {
             return response()->json(['message' => 'Client not found'], 404);
@@ -243,35 +222,48 @@ class ClientController extends Controller
     public function destroy(Request $request, $client = null)
     {
         try {
-            // If $client is passed as a parameter, delete the specific client
+            // If a single client ID is provided
             if ($client) {
-                $client = Client::findOrFail($client); // Find client by ID or throw 404 if not found
+                $client = Client::findOrFail($client); // Find client or throw 404
+
+                // Authorization check for deleting a specific client
+                Gate::authorize('delete', $client);
+
                 $client->delete();
+
                 return response()->json([
                     'message' => 'Client deleted successfully'
                 ], 200);
             }
 
-            // If no specific client is provided, proceed with bulk deletion
-            $request->validate([
+            // Validate request for bulk deletion
+            $validated = $request->validate([
                 'client_ids' => 'required|array',
                 'client_ids.*' => 'exists:clients,id',
             ]);
 
-            // Attempt to delete the selected clients
-            Client::whereIn('id', $request->client_ids)->delete();
+            // Fetch clients to be deleted
+            $clients = Client::whereIn('id', $validated['client_ids'])->get();
+
+            // Authorization check for each client
+            foreach ($clients as $client) {
+                Gate::authorize('delete', $client);
+            }
+
+            // Proceed with bulk deletion
+            Client::whereIn('id', $validated['client_ids'])->delete();
 
             return response()->json([
                 'message' => 'Clients deleted successfully'
             ], 200);
         } catch (\Exception $e) {
-            // Return a response with an error message if something goes wrong
             return response()->json([
                 'message' => 'An error occurred while deleting clients',
                 'error' => $e->getMessage(),
             ], 500);
         }
     }
+
 
 
 
