@@ -47,21 +47,26 @@ Route::get('shippings/name/{Shipping_name}', [ShippingController::class, 'showBy
 
 
 //////////////Routes for Employees
+Route::middleware('auth:sanctum')->group(function () {
+    Route::apiResource('employee', EmployeeController::class);
+    Route::get('employee/name/{Employee_name}', [EmployeeController::class, 'showByName']);
+});
 
-Route::apiResource('employee', EmployeeController::class);
-Route::get('employee/name/{Employee_name}', [EmployeeController::class, 'showByName']);
 
 
 //////////////Route for Cites
-Route::apiResource('cities', CityController::class);
-Route::get('cities/name/{City_name}', [CityController::class, 'showByName']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::apiResource('cities', CityController::class);
+    Route::get('cities/name/{City_name}', [CityController::class, 'showByName']);
+    });
+
 
 
 //////////////Routes for Area 
+Route::middleware('auth:sanctum')->group(function(){
 Route::apiResource('area', AreaController::class);
 Route::get('area/name/{Area_name}', [AreaController::class, 'showByName']);
-// Route::patch('area/{area}', [AreaController::class, 'updateOnlyone']);
-
+});
 
 /////////////Routes for brands
 Route::apiResource('brand', BrandController::class);
@@ -116,18 +121,25 @@ Route::apiResource('products.variants.images', ImageController::class)
 Route::middleware('auth:sanctum')->group(function(){
 Route::apiResource('carts', CartController::class);
 Route::get('carts/ClientName/{client_name}',[CartController::class, 'showByName']);
-Route::patch('carts/{cartId}/checkout', [CartController::class, 'checkout']);
+    Route::patch('carts/{cart}/checkout', [CartController::class, 'checkout']);
 Route::scopeBindings()->group(function () {
-Route::apiResource('cart.cartItem', ItemController::class);
+        Route::apiResource('carts.items', ItemController::class)->scoped([
+            'cart' => 'id',  // Ensure the `cart` is bound by `id`
+            'item' => 'id',  // Ensure the `cartItem` is bound by `id`
+        ]);
+        Route::patch('cart-items/{cartItem}', [ItemController::class, 'update']);
 });
 });
+
+
+
+
 
 
 
 /////////////////////////////Routes for Order
 
-Route::patch('carts/{cartId}/checkout', [CartController::class, 'checkout']); //In the Cart Controller
-Route::get('/order/{orderId}/ticket', [OrderController::class, 'getOrderInfo']);
+
 
 Route::middleware('auth:sanctum')->get('/orders', [OrderController::class, 'getAllOrders']);
 

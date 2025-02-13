@@ -16,12 +16,12 @@ class EmployeeResource extends JsonResource
     {
         return [
             'ID' => $this->id,
-            'First Name' => $this->first_name,
-            'Last Name' => $this->last_name,
-            'Phone number' => $this->phone_number,
-            'Email' => $this->email,
-            'Role' => $this->role,
-            'Profile Pic' => $this->profile_pic ? url('storage/' . $this->profile_pic) : 'Not provided',
+            'first_name' => $this->first_name,
+            'last_name' => $this->last_name,
+            'phone_number' => $this->phone_number,
+            'email' => $this->email,
+            'role' => $this->role,
+            'profile_pic' => $this->profile_pic ? url('storage/' . $this->profile_pic) : 'Not provided',
         ];
 
     }

@@ -143,14 +143,15 @@ class OrderController extends Controller
     {
         
         try {
-            if (!Gate::allows('viewAny', Order::class)) {
-                return response()->json(['message' => 'Unauthorized'], 403);
-            }
+
             // Fetch the order details
             $order = Order::select('id', 'client_name', 'client_phone', 'total_price', 'Cost_shipping_price', 'city_name', 'area_name', 'address', 'client_notes', 'created_at', 'is_discount', 'discount')
             ->with(['orderItems.varient.product']) // Load order items and related product details
             ->findOrFail($orderId);
-
+            
+            if (!Gate::allows('view', $order)) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
             // Handle null values for shipping address
             $city = $order->city_name ?? 'Unprovided';
             $area = $order->area_name ?? 'Unprovided';
@@ -218,26 +219,28 @@ class OrderController extends Controller
     public function getOrderInfo(Request $request, $orderId)
     {
         try {
-            if (!Gate::allows('viewAny', Order::class)) {
-                return response()->json(['message' => 'Unauthorized'], 403);
-            }
+
 
             
             // Fetch the order by ID, including necessary fields
             $order = Order::select('id', 'client_id', 'client_name', 'client_phone', 'additional_phone', 'total_price', 'city_name', 'area_name', 'address', 'client_notes')
             ->findOrFail($orderId); // Retrieve the order or throw an error if not found
 
+            if (!Gate::allows('view', $order)) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+
             // Format the shipping address
             $shippingAddress = $order->city_name . ', ' . $order->area_name . ' - ' . $order->address;
 
             // Return the order with the selected data
             return response()->json([
-                'Client Name' => $order->client_name,
-                'Client Phonenumber' => $order->client_phone,
-                'Additional Phone' => $order->additional_phone,
-                'Shipping Address' => $shippingAddress,
-                'Total price' => $order->total_price,
-                'Client Notes' => $order->client_notes, // Include client notes if necessary
+                'client_name' => $order->client_name,
+                'client_phonenumber' => $order->client_phone,
+                'additional_phone' => $order->additional_phone,
+                'shipping_address' => $shippingAddress,
+                'total_price' => $order->total_price,
+                'client_notes' => $order->client_notes, // Include client notes if necessary
             ]);
         } catch (\Exception $e) {
             // Handle errors if the order is not found or any other exception
@@ -268,14 +271,11 @@ class OrderController extends Controller
 
     public function getOrderById($id)
     {
-
-        if (!Gate::allows('viewAny', Order::class)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
         // Find the order by its ID and load related orderItems and client
         $order = Order::with('orderItems')->find($id);
-
+        if (!Gate::allows('view',$order)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
         // Check if the order exists
         if (!$order) {
             return response()->json(['message' => 'Orderrr not found.'], 404);
@@ -295,6 +295,10 @@ class OrderController extends Controller
 
         // Find the order by ID
         $order = Order::with('orderItems')->find($id);
+
+        if (!$request->user()->can('updateStatus', $order)) {
+            return response()->json(['error' => 'Unauthorized.'], 403);
+        }
 
         // Check if the order exists
         if (!$order) {
@@ -385,6 +389,10 @@ class OrderController extends Controller
         // Find the order by ID
         $order = Order::find($id);
 
+        if (!$request->user()->can('updateStatus', $order)) {
+            return response()->json(['error' => 'Unauthorized.'], 403);
+        }
+
         // Check if the order exists
         if (!$order) {
             return response()->json(['message' => 'Order not found.'], 404);
@@ -461,7 +469,7 @@ class OrderController extends Controller
 
 
     // Delete an order by ID
-    public function deleteOrder($orderId)
+    public function deleteOrder(Request $request, $orderId)
     {
         try {
             // Begin transaction to ensure atomic operations
@@ -474,6 +482,12 @@ class OrderController extends Controller
             if (!$order) {
                 return response()->json(['message' => 'Order not found.'], 404);
             }
+
+            if (!$request->user()->can('delete', $order)) {
+                return response()->json(['error' => 'Unauthorized.'], 403);
+            }
+
+            
 
             // Restore stock for each order item
             foreach ($order->orderItems as $orderItem) {

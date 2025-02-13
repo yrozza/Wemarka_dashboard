@@ -6,19 +6,54 @@ use Illuminate\Support\Facades\Gate;
 use App\Models\Product;
 use App\Policies\ProductPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use App\Models\CartItem;
+use App\Models\Order;
+use App\Models\Cart;
+use App\Policies\CartPolicy;
+use App\Policies\CartItemPolicy;
 use App\Models\User;
+use App\Models\Area;
+use App\Models\City;
+use App\Models\Employee;
+use App\Policies\AreaPolicy;
+use App\Policies\CityPolicy;
+use App\Policies\EmployeePolicy;
+use App\Policies\OrderPolicy;
 
 class AuthServiceProvider extends ServiceProvider
 {
+    protected $policies = [
+        User::class => EmployeePolicy::class, 
+        City::class => CityPolicy::class,
+        CartItem::class => CartItemPolicy::class,
+        Cart::class => CartPolicy::class,
+        Order::class => OrderPolicy::class,
+        Area::class => AreaPolicy::class,
+    ];
+
     public function boot(): void
     {
         // Register product policy
         Gate::policy(Product::class, ProductPolicy::class);
 
-        // Super Admin can bypass all Gates
-        Gate::before(function (User $user) {
-            return $user->role === 'super_admin' ? true : null;
+
+
+
+        Gate::before(function (User $user,string $ability) {
+            if ($user->role === 'super_admin') {
+                return true; // Super Admin bypasses all checks
+            }
+
+            // Admin can manage most areas but not assign roles or delete users
+            if ($user->role === 'admin' && in_array($ability, ['viewAny', 'create', 'update', 'delete'])) {
+                return true;
+            }
+
+            return null; // Use policy methods for other checks
         });
+
+
+        
 
         // Admins can manage everything
         Gate::define('manage-dashboard', fn(User $user) => $user->hasRole(['admin']));

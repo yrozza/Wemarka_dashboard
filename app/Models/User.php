@@ -14,7 +14,6 @@ use Laravel\Sanctum\HasApiTokens;  // Add this import
 class User extends Authenticatable  
 {
     use HasFactory, Notifiable, HasApiTokens;  // Add HasApiTokens here
-    use HasRoles;
 
     protected $guard_name = 'api';  
 
@@ -41,15 +40,7 @@ class User extends Authenticatable
         return in_array($this->role, $roles);
     }
 
-    public function roles()
-    {
-        return $this->belongsToMany(\Spatie\Permission\Models\Role::class);
-    }
 
-    public function permissions()
-    {
-        return $this->belongsToMany(\Spatie\Permission\Models\Permission::class);
-    }
 
     /**
      * The attributes that should be hidden for serialization.

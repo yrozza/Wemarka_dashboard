@@ -11,7 +11,8 @@ class Cart extends Model
         'cart_id',      // Foreign key to the cart
         'varient_id',   // Foreign key to the variant
         'quantity',     // Quantity of the variant
-        'price',        // Price of the variant
+        'price',
+        'status'        // Price of the variant
     ];
     public function client()
     {

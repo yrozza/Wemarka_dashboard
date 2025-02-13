@@ -20,7 +20,7 @@ class ItemResource extends JsonResource
             'category' => $this->varient->product->category->Category ?? 'unprovided',
             'quantity' => $this->quantity ?? 'unprovided',
             'price_per_quantity' => $this->price ?? 'unprovided',
-            'total_price' => $this->order->total_price ?? 'unprovided',
+            'total_price' => $this->price * $this->quantity ?? 'unprovided',
             'variant_details' => [
                 'color' => $this->varient->color ?? 'unprovided',
                 'volume' => $this->varient->volume ?? 'unprovided',

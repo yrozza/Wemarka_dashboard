@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AreaResource;
 use App\Models\City;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Http\Request;
 use App\Models\Area;
 
@@ -16,6 +17,9 @@ class AreaController extends Controller
     public function index(Request $request)
     {
         try {
+            if (!Gate::allows('viewAny', Area::class)) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
             // Get paginated areas with their related cities
             $perPage = $request->query('per_page', 10); // Default 10 per page
             $areas = Area::with('city')->paginate($perPage);
@@ -38,6 +42,11 @@ class AreaController extends Controller
     public function store(Request $request)
     {
         try {
+
+            if (!Gate::allows('create', Area::class)) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+
             // Validate incoming request
             $validated = $request->validate([
                 'Area_name' => 'required|string|unique:areas,Area_name|max:255',
@@ -85,11 +94,15 @@ class AreaController extends Controller
         try {
             $area = Area::with('city')->find($id);
 
+            if (!Gate::allows('view', $area)) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
             if (!$area) {
                 return response()->json([
                     'message' => 'Area not found'
                 ], 404);
             }
+
 
             return new AreaResource($area); // Return as a resource
 
@@ -109,6 +122,10 @@ class AreaController extends Controller
             $areas = Area::with('city')
             ->where('Area_name', 'LIKE', "%$areaName%")
             ->paginate(10); // Paginate with 10 results per page
+
+            if (!Gate::allows('viewAny', Area::class)) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
 
             // If no areas are found, return a 404 response
             if ($areas->isEmpty()) {
@@ -146,6 +163,10 @@ class AreaController extends Controller
             // Find the area
             $area = Area::findOrFail($id);
 
+            if (!$request->user()->can('update', $area)) {
+                return response()->json(['error' => 'Unauthorized.'], 403);
+            }
+
             // Update the area with only provided values
             $area->update($validated);
 
@@ -165,8 +186,20 @@ class AreaController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Area $area)
+    public function destroy(Request $request, $areaId)
     {
+        if (!$request->user()->can('delete', $areaId)) {
+            return response()->json(['error' => 'Unauthorized.'], 403);
+        }
+
+        $area = Area::with('orderItems')->find($areaId);
+
+        // Check if the order exists
+        if (!$area) {
+            return response()->json(['message' => 'Order not found.'], 404);
+        }
+
+
     $area->delete();
 
     return response()->json([

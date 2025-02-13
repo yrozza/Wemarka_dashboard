@@ -7,6 +7,7 @@ use App\Models\Cart;
 use App\Models\Varient;
 use App\Http\Resources\ItemResource;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Http\Request;
 
 class ItemController extends Controller
@@ -16,16 +17,17 @@ class ItemController extends Controller
      */
     public function index(Cart $cart, Request $request)
     {
+        if (!Gate::allows('viewAny', CartItem::class)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
         try {
-            // Validate 'per_page' query parameter
             $validated = $request->validate([
-                'per_page' => 'nullable|integer|min:1', // Optional per_page query parameter for pagination
+                'per_page' => 'nullable|integer|min:1',
             ]);
 
-            // Set default items per page to 10 if not provided in the request
             $perPage = $validated['per_page'] ?? 10;
 
-            // Retrieve paginated cart items for the given cart with eager loading
             $cartItems = CartItem::where('cart_id', $cart->id)
                 ->with([
                     'varient',
@@ -35,16 +37,14 @@ class ItemController extends Controller
                 ])
                 ->paginate($perPage);
 
-            // If no cart items found, return a 404 response
             if ($cartItems->isEmpty()) {
                 return response()->json([
                     'message' => 'No items found for the given cart.',
                 ], 404);
             }
 
-            // Return paginated cart items along with pagination details
             return response()->json([
-                'cart_items' => ItemResource::collection($cartItems->items()), // Apply the resource to the paginated items
+                'cart_items' => ItemResource::collection($cartItems->items()),
                 'pagination' => [
                     'total' => $cartItems->total(),
                     'per_page' => $cartItems->perPage(),
@@ -55,7 +55,6 @@ class ItemController extends Controller
                 ],
             ], 200);
         } catch (\Exception $e) {
-            // Return a 500 error response for unexpected errors
             return response()->json([
                 'message' => 'Internal Server Error',
                 'error' => $e->getMessage(),
@@ -87,35 +86,38 @@ class ItemController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Cart $cart, CartItem $cartItem)
+    public function update(Request $request, CartItem $cartItem)
     {
         try {
-            // Ensure the cartItem belongs to the specified cart
-            if ($cartItem->cart_id !== $cart->id) {
-                return response()->json([
-                    'message' => 'The cart item does not belong to the specified cart.',
-                ], 403);
-            }
+            // Authorize user before updating
+            Gate::authorize('update', $cartItem);
 
-            // Validate the incoming data
+            // Validate request data
             $validated = $request->validate([
-                'varient_id' => 'nullable|exists:varients,id', // Ensure the variant exists
-                'quantity' => 'nullable|integer|min:1',       // Ensure quantity is valid
+                'varient_id' => 'nullable|exists:varients,id',
+                'quantity' => 'nullable|integer|min:1',
             ]);
 
-            // Check if the user is attempting to update the `variant_id`
+            // Ensure cart item has a valid variant before checking product_id
+            if (!$cartItem->varient) {
+                return response()->json([
+                    'message' => 'The cart item does not have a valid variant.',
+                ], 400);
+            }
+
+            // If changing the variant, ensure it's from the same product
             if (isset($validated['varient_id']) && $validated['varient_id'] != $cartItem->varient_id) {
-                // Ensure the new variant belongs to the same product (if required)
                 $newVariant = Varient::find($validated['varient_id']);
-                if (!$newVariant || $newVariant->product_id != $cartItem->varient->product_id) {
+
+                if (!$newVariant || $newVariant->product_id !== $cartItem->varient->product_id) {
                     return response()->json([
                         'message' => 'The selected variant does not belong to the same product.',
                     ], 400);
                 }
 
-                // Update the variant_id
+                // Update variant_id and price
                 $cartItem->varient_id = $validated['varient_id'];
-                $cartItem->price = $newVariant->price; // Update price based on the new variant
+                $cartItem->price = $newVariant->price;
             }
 
             // Update quantity if provided
@@ -123,19 +125,15 @@ class ItemController extends Controller
                 $cartItem->quantity = $validated['quantity'];
             }
 
-            // Recalculate total price
+            // Update total price
             $cartItem->total_price = $cartItem->price * $cartItem->quantity;
-
-            // Save the changes
             $cartItem->save();
 
-            // Return the updated cart item as a resource
             return response()->json([
                 'message' => 'Cart item updated successfully.',
                 'cart_item' => new ItemResource($cartItem),
             ], 200);
         } catch (\Exception $e) {
-            // Handle unexpected errors
             return response()->json([
                 'message' => 'Internal Server Error',
                 'error' => $e->getMessage(),
@@ -145,33 +143,31 @@ class ItemController extends Controller
 
 
 
+
+
     /**
      * Remove the specified resource from storage.
      */
     public function destroy($cart_id, $id)
     {
+        $cartItem = CartItem::where('id', $id)
+            ->where('cart_id', $cart_id)
+            ->first();
+
+        if (!$cartItem) {
+            return response()->json([
+                'message' => 'Cart item not found for the given cart_id and id.',
+            ], 404);
+        }
+        Gate::authorize('delete', $cartItem);
+
         try {
-            // Find the cart item based on the cart_id and id
-            $cartItem = CartItem::where('id', $id)
-                ->where('cart_id', $cart_id)
-                ->first();
-
-            // If the cart item doesn't exist, return a 404 error
-            if (!$cartItem) {
-                return response()->json([
-                    'message' => 'Cart item not found for the giveeen cart_id and id.',
-                ], 404);
-            }
-
-            // Delete the cart item
             $cartItem->delete();
 
-            // Return a success response
             return response()->json([
                 'message' => 'Cart item deleted successfully.',
             ], 200);
         } catch (\Exception $e) {
-            // Handle unexpected errors
             return response()->json([
                 'message' => 'Internal Server Error',
                 'error' => $e->getMessage(),
