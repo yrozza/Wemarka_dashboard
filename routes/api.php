@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\VarientController;
 use App\Http\Controllers\Api\ImageController;
+use App\Http\Controllers\Api\SupplierController;
 use Illuminate\Support\Facades\Route;
 
 // Middleware-protected user route
@@ -38,12 +39,18 @@ Route::middleware('auth:sanctum') -> group(function(){
 
 
 ////////////// Routes for sources
-Route::apiResource('sources', SourceController::class);
-Route::get('sources/id/{id}', [SourceController::class, 'showId']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::apiResource('sources', SourceController::class);
+    Route::get('sources/id/{id}', [SourceController::class, 'showId']);
+});
+
 
 //////////////Routes for shipping companies
-Route::apiResource('shippings', ShippingController::class);
-Route::get('shippings/name/{Shipping_name}', [ShippingController::class, 'showByName']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::apiResource('shippings', ShippingController::class);
+    Route::get('shippings/name/{Shipping_name}', [ShippingController::class, 'showByName']);
+});
+
 
 
 //////////////Routes for Employees
@@ -69,17 +76,21 @@ Route::get('area/name/{Area_name}', [AreaController::class, 'showByName']);
 });
 
 /////////////Routes for brands
-Route::apiResource('brand', BrandController::class);
-Route::get('brand/name/{Brand_name}', [BrandController::class, 'showByname']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::apiResource('brand', BrandController::class);
+    Route::get('brand/name/{Brand_name}', [BrandController::class, 'showByname']);
+});
+
 
 
 
 
 
 /////////////////////Routes for Category
-Route::apiResource('category', CategoryController::class);
-Route::get('category/name/{Category}', [CategoryController::class, 'showByName']);
-Route::patch('category/{category}', [CategoryController::class, 'updateOnlyone']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::apiResource('category', CategoryController::class);
+    Route::get('category/name/{Category}', [CategoryController::class, 'showByName']);
+});
 
 
 
@@ -92,6 +103,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/products', [ProductController::class, 'destroy']);
 });
 
+
+/////////////////////Routes for Supplier
+Route::middleware('auth:sanctum')->group(function () {
+    Route::apiResource('supplier', SupplierController::class);
+    Route::get('supplier/name/{Supplier_name}', [SupplierController::class, 'showByName']);
+});
 
 
 ////////////////////Routes for Varients

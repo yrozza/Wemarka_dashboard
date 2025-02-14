@@ -20,7 +20,7 @@ class ProductPolicy
      */
     public function view(User $user, Product $product): bool
     {
-        return in_array($user->role, ['super_admin', 'admin', 'warehouse', 'customer_service']);
+        return in_array($user->role, ['super_admin', 'admin', 'warehouse', 'customer_service' , 'data_analyst']);
     }
 
     /**
@@ -44,6 +44,6 @@ class ProductPolicy
      */
     public function delete(User $user, Product $product): bool
     {
-        return in_array($user->role, ['super_admin', 'admin']);
+        return in_array($user->role, ['super_admin']);
     }
 }

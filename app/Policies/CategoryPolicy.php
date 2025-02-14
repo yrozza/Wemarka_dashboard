@@ -2,26 +2,27 @@
 
 namespace App\Policies;
 
-use App\Models\City;
+use App\Models\Category;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
-class CityPolicy
+class CategoryPolicy
 {
     /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
-        return in_array($user->role, ['super_admin', 'admin', 'customer_service']);
+        return in_array($user->role, ['super_admin', 'admin', 'customer_service', 'warehouse']);   
     }
 
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, City $city): bool
+    public function view(User $user, Category $category): bool
     {
-        return in_array($user->role, ['super_admin', 'admin', 'customer_service']);
+        return in_array($user->role, ['super_admin', 'admin', 'customer_service', 'warehouse']);
+
     }
 
     /**
@@ -29,21 +30,21 @@ class CityPolicy
      */
     public function create(User $user): bool
     {
-        return in_array($user->role, ['super_admin', 'admin']);
+        return in_array($user->role, ['super_admin', 'admin', 'warehouse']);
     }
 
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, City $city): bool
+    public function update(User $user, Category $category): bool
     {
-        return in_array($user->role, ['super_admin', 'admin']);
+        return in_array($user->role, ['super_admin', 'admin', 'warehouse']);
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, City $city): bool
+    public function delete(User $user, Category $category): bool
     {
         return in_array($user->role, ['super_admin']);
     }
@@ -51,7 +52,7 @@ class CityPolicy
     /**
      * Determine whether the user can restore the model.
      */
-    public function restore(User $user, City $city): bool
+    public function restore(User $user, Category $category): bool
     {
         return false;
     }
@@ -59,7 +60,7 @@ class CityPolicy
     /**
      * Determine whether the user can permanently delete the model.
      */
-    public function forceDelete(User $user, City $city): bool
+    public function forceDelete(User $user, Category $category): bool
     {
         return false;
     }

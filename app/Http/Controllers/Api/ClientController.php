@@ -224,7 +224,7 @@ class ClientController extends Controller
         try {
             // If a single client ID is provided
             if ($client) {
-                $client = Client::findOrFail($client); // Find client or throw 404
+                $client = Client::findOrFail($client); // Throws 404 if not found
 
                 // Authorization check for deleting a specific client
                 Gate::authorize('delete', $client);
@@ -245,6 +245,12 @@ class ClientController extends Controller
             // Fetch clients to be deleted
             $clients = Client::whereIn('id', $validated['client_ids'])->get();
 
+            if ($clients->isEmpty()) {
+                return response()->json([
+                    'message' => 'No clients found for deletion'
+                ], 404);
+            }
+
             // Authorization check for each client
             foreach ($clients as $client) {
                 Gate::authorize('delete', $client);
@@ -256,6 +262,10 @@ class ClientController extends Controller
             return response()->json([
                 'message' => 'Clients deleted successfully'
             ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'Client not found'
+            ], 404);
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'An error occurred while deleting clients',
@@ -263,6 +273,7 @@ class ClientController extends Controller
             ], 500);
         }
     }
+
 
 
 

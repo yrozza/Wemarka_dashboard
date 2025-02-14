@@ -45,7 +45,7 @@ class ClientPolicy
      */
     public function delete(User $user, Client $client): bool
     {
-        return in_array($user->role, ['super_admin', 'admin']);
+        return in_array($user->role, ['super_admin']);
     }
 
     /**

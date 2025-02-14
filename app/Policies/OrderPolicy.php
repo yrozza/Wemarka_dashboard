@@ -54,7 +54,7 @@ class OrderPolicy
      */
     public function delete(User $user, Order $order): bool
     {
-        return in_array($user->role, ['super_admin', 'admin', 'customer_service']);
+        return in_array($user->role, ['super_admin']);
     }
 
     /**

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Models\Brand;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\BrandResource;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Auth\Events\Validated;
 use Illuminate\Http\Request;
 
@@ -15,7 +16,16 @@ class BrandController extends Controller
      */
     public function index()
     {
-        return BrandResource::collection(Brand::paginate(10)); // Paginate with 10 items per page
+        try {
+            Gate::authorize('viewAny', Brand::class);
+            return BrandResource::collection(Brand::paginate(10)); // Paginate with 10 items per page
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Internal Server Error',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+        
     }
 
 
@@ -25,6 +35,7 @@ class BrandController extends Controller
     public function store(Request $request)
     {
         try {
+            Gate::authorize('create' , Brand::class);
             $validated = $request->validate([
                 'Brand_name' => 'required|string|unique:brands,Brand_name|max:255',
                 'Company_address' => 'required|string|max:255',
@@ -56,7 +67,7 @@ class BrandController extends Controller
     {
         try {
             $brand = Brand::find($id);
-
+            Gate::authorize('view', $brand);
             if (!$brand) {
                 return response()->json([
                     'message' => 'Not found',
@@ -75,18 +86,20 @@ class BrandController extends Controller
     public function showByName($brand_name)
     {
         try {
-            // Query to find the brand by name using LIKE
-            $brand = Brand::where('Brand_name', 'LIKE', "%$brand_name%")->get();
+            Gate::authorize('viewAny', Brand::class);
+
+            // Query to find brands by name using LIKE with pagination
+            $brands = Brand::where('Brand_name', 'LIKE', "%$brand_name%")->paginate(10);
 
             // Check if no results are found
-            if ($brand->isEmpty()) {
+            if ($brands->isEmpty()) {
                 return response()->json([
                     'message' => 'Brand not found',
                 ], 404);
             }
 
-            // Return the brand data
-            return BrandResource::collection($brand);
+            // Return the paginated brand data
+            return BrandResource::collection($brands);
         } catch (\Exception $e) {
             // Handle internal server errors
             return response()->json([
@@ -98,12 +111,14 @@ class BrandController extends Controller
 
 
 
+
     /**
      * Update the specified resource in storage.
      */
     public function update(Request $request, Brand $brand)
     {
         try {
+            Gate::authorize('update', $brand);
             $validated = $request->validate([
                 'Brand_name' => 'sometimes|string|max:255|unique:brands,Brand_name,' . $brand->id,
                 'Company_address' => 'sometimes|string|max:255',
@@ -136,10 +151,20 @@ class BrandController extends Controller
      */
     public function destroy(Brand $brand)
     {
-        $brand->delete();
+        try {
+            Gate::authorize('delete',$brand);
+            $brand->delete();
 
-        return response()->json([
-            'Message' => 'Deleted sucessfully'
-        ],200);
-    }
+            return response()->json([
+                'Message' => 'Deleted sucessfully'
+            ], 200);
+        
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Internal Server Error',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+
+}
 }

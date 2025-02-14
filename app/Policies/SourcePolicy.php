@@ -2,10 +2,11 @@
 
 namespace App\Policies;
 
-use App\Models\Area;
+use App\Models\Source;
 use App\Models\User;
+use Illuminate\Auth\Access\Response;
 
-class AreaPolicy
+class SourcePolicy
 {
     /**
      * Determine whether the user can view any models.
@@ -18,7 +19,7 @@ class AreaPolicy
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, Area $area): bool
+    public function view(User $user, Source $source): bool
     {
         return in_array($user->role, ['super_admin', 'admin', 'customer_service']);
     }
@@ -34,7 +35,7 @@ class AreaPolicy
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, Area $area): bool
+    public function update(User $user, Source $source): bool
     {
         return in_array($user->role, ['super_admin', 'admin']);
     }
@@ -42,7 +43,7 @@ class AreaPolicy
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, Area $area): bool
+    public function delete(User $user, Source $source): bool
     {
         return in_array($user->role, ['super_admin']);
     }
@@ -50,16 +51,16 @@ class AreaPolicy
     /**
      * Determine whether the user can restore the model.
      */
-    public function restore(User $user, Area $area): bool
+    public function restore(User $user, Source $source): bool
     {
-        return $user->role === 'super_admin';
+        return false;
     }
 
     /**
      * Determine whether the user can permanently delete the model.
      */
-    public function forceDelete(User $user, Area $area): bool
+    public function forceDelete(User $user, Source $source): bool
     {
-        return $user->role === 'super_admin';
+        return false;
     }
 }

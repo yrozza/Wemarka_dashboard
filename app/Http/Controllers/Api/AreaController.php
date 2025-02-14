@@ -199,8 +199,8 @@ class AreaController extends Controller
             return response()->json(['message' => 'Order not found.'], 404);
         }
 
-
     $area->delete();
+
 
     return response()->json([
         'Message' => 'Deleted successfully'

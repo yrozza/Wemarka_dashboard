@@ -22,11 +22,17 @@ class ProductController extends Controller
      */
     public function index()
     {
-        if (!Gate::allows('viewAny', Product::class)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
+        try {
+            Gate::authorize('viewAny', Product::class);
 
-        return ProductResource::collection(Product::paginate(10));
+            return ProductResource::collection(Product::paginate(10));
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Internal Server Error',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+        
     }
 
     /**
@@ -35,6 +41,7 @@ class ProductController extends Controller
     public function store(Request $request)
     {
         try {
+            Gate::authorize('create',Product::class);
             $validated = $request->validate([
                 'Product_name' => 'required|string|unique:products,Product_name|max:255',
                 'Product_description' => 'required|string',
@@ -94,9 +101,7 @@ class ProductController extends Controller
     public function showByName($Product_name, Request $request)
     {
         try {
-            if (!Gate::allows('viewAny', Product::class)) {
-                return response()->json(['message' => 'Unauthorized'], 403);
-            }
+            Gate::authorize('viewAny', Product::class);
             // Get the 'per_page' parameter from the request, default to 10 if not present
             $perPage = $request->get('per_page', 10);
 
@@ -126,40 +131,50 @@ class ProductController extends Controller
     public function getAllProductsWithVariants(Request $request)
     {
 
-        if (!Gate::allows('viewAny', Product::class)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+        try {
+            Gate::authorize('viewAny', Product::class);
+
+
+            $perPage = $request->get('per_page', 10);
+
+            $products = DB::table('products')
+            ->leftJoin('varients', 'products.id', '=', 'varients.product_id')
+            ->select('products.*', 'varients.*') // Get all columns from both tables
+            ->paginate($perPage);
+
+            return response()->json($products);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Internal Server Error',
+                'error' => $e->getMessage(),
+            ], 500);
         }
-
-
-        $perPage = $request->get('per_page', 10);
-
-        $products = DB::table('products')
-        ->leftJoin('varients', 'products.id', '=', 'varients.product_id')
-        ->select('products.*', 'varients.*') // Get all columns from both tables
-        ->paginate($perPage);
-
-        return response()->json($products);
+        
     }
 
 
 
     public function show($id)
     {
-
-        if (!Gate::allows('viewAny', Product::class)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-        $product = DB::table('products')
-        ->leftJoin('varients', 'products.id', '=', 'varients.product_id')
-        ->where('products.id', $id)
+        try {
+            $product = DB::table('products')
+            ->leftJoin('varients', 'products.id', '=', 'varients.product_id')
+            ->where('products.id', $id)
             ->select('products.*', 'varients.*') // Select everything from both tables
             ->get();
+            Gate::authorize('view', $product);
 
-        if ($product->isEmpty()) {
-            return response()->json(['message' => 'Product not found'], 404);
+            if ($product->isEmpty()) {
+                return response()->json(['message' => 'Product not found'], 404);
+            }
+
+            return response()->json($product);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Internal Server Error',
+                'error' => $e->getMessage(),
+            ], 500);
         }
-
-        return response()->json($product);
     }
 
 
@@ -170,6 +185,7 @@ class ProductController extends Controller
     public function update(Request $request, Product $product)
     {
         try {
+            Gate::authorize('update', $product);
             $validated = $request->validate([
                 'Product_name' => 'required|string|max:255|unique:products,Product_name,' . $product->id,
                 'Product_description' => 'required|string',
@@ -194,6 +210,7 @@ class ProductController extends Controller
                 'Brand_name' => 'nullable|string',
                 'Tags' => 'nullable|string',
             ]);
+                
 
             // Prepare an array of the attributes to check
             $changes = [
@@ -253,16 +270,26 @@ class ProductController extends Controller
      */
     public function destroy(Request $request)
     {
-        $request->validate([
-            'product_ids' => 'required|array',
-            'product_ids.*' => 'exists:products,id',
-        ]);
+        try {
+            
+            $request->validate([
+                'product_ids' => 'required|array',
+                'product_ids.*' => 'exists:products,id',
+            ]);
 
-        Product::whereIn('id', $request->product_ids)->delete();
+            Gate::authorize('delete', $request);
 
-        return response()->json([
-            'message' => 'Products deleted successfully'
-        ], 200);
+            Product::whereIn('id', $request->product_ids)->delete();
+
+            return response()->json([
+                'message' => 'Products deleted successfully'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Internal Server Error',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
 }

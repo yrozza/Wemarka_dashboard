@@ -45,7 +45,7 @@ class CartItemPolicy
      */
     public function delete(User $user, CartItem $cartItem): bool
     {
-        return in_array($user->role, ['super_admin', 'admin', 'customer_service']);
+        return in_array($user->role, ['super_admin']);
     }
 
     /**

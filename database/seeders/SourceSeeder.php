@@ -16,7 +16,7 @@ class SourceSeeder extends Seeder
         $clients = \App\Models\Client::all();
 
         foreach($clients as $client){
-           Source::factory(rand(1,3))->create(['client_id' => $client->id, 
+        Source::factory(rand(1,3))->create(['client_id' => $client->id, 
         ]);
         }
     }
