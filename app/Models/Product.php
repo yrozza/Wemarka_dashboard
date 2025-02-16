@@ -32,4 +32,9 @@ class Product extends Model
     {
         return $this->hasMany(Varient::class);
     }
+
+    public function packages()
+    {
+        return $this->belongsToMany(Package::class, 'package_product')->withPivot('quantity');
+    }
 }

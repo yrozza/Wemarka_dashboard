@@ -3,6 +3,7 @@ use App\Http\Controllers\Api\AreaController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BrandController;
 use App\Http\Controllers\Api\CartController;
+use App\Http\Controllers\Api\PackageController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ItemController;
 use App\Http\Controllers\QRCodeController;
@@ -20,10 +21,7 @@ use App\Http\Controllers\Api\ImageController;
 use App\Http\Controllers\Api\SupplierController;
 use Illuminate\Support\Facades\Route;
 
-// Middleware-protected user route
-// Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
-//     return $request->user();
-// });
+
 
 ////////////// Routes for clients
 
@@ -111,27 +109,48 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 
+
+Route::post('variant/{product}/{variant}/image', [VarientController::class, 'updateVariantImage'])
+    ->middleware('auth:sanctum');
+
+
 ////////////////////Routes for Varients
-Route::apiResource('product.varient', VarientController::class)
-    ->scoped(['varient' => 'id']);
-Route::post('/product/{product}/varient/{varient}/Add-Image', [VarientController::class, 'addImage']);
-Route::patch('/variant/{variantId}/edit-image/{imageId}', [VarientController::class, 'updateImage']);
-Route::delete('products/{product}/variants/select-destroy', [VarientController::class, 'selectDestroy']);
-Route::delete('/variants/DeleteSelectedvariants', [VarientController::class, 'DeleteSelectedvarients']);
-
-
-
-
-
-
-
-
-////////////////////Routes for images
-Route::apiResource('products.variants.images', ImageController::class)
+    Route::middleware('auth:sanctum')->group(function () {
+    Route::apiResource('product.varient', VarientController::class)->scoped(['varient' => 'id']);
+    Route::get('/product/{product}/varient/{varient}', [VarientController::class, 'showProductwithVariant']);
+    Route::post('/product/{product}/varient/{varient}/Add-Image', [VarientController::class, 'addImage']);
+    // Route::patch('/variant/{variantId}/edit-image/{imageId}', [VarientController::class, 'updateVariantImage']);
+    // Route::middleware('auth:sanctum')->put('/products/{product}/variants/{id}/image', [VarientController::class, 'updateVariantImage']);
+    Route::apiResource('products.variants.images', ImageController::class)
     ->scoped([
         'variant' => 'id',
         'image' => 'id', // Optional, ensures the `image` route uses `id` for lookup
     ]);
+    Route::delete('products/{product}/variants/destroy-selected', [VarientController::class, 'destroySelectedVarients']);
+
+
+});
+
+
+
+
+
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::apiResource('packages', PackageController::class);
+    Route::get('/packages/search/{name}', [PackageController::class, 'searchByName']);
+    Route::patch('packages/{id}/basic-info', [PackageController::class, 'updateBasicInfo']); // Update Name, Description, and Price
+    Route::patch('packages/{packageId}/variants/{variantId}', [PackageController::class, 'replaceVariant']);
+    Route::delete('packages/{packageId}/variants', [PackageController::class, 'deleteVariants']);
+
+});
+
+
+
+
+
+
+
+
 
 
 ////////////////////////////Routes For Cart
@@ -156,17 +175,8 @@ Route::scopeBindings()->group(function () {
 
 /////////////////////////////Routes for Order
 
-
-
-Route::middleware('auth:sanctum')->get('/orders', [OrderController::class, 'getAllOrders']);
-
-
-
-
-Route::get('order-selected/generate-report', [OrderController::class, 'generateOrderReport']);
-
-
 Route::middleware('auth:sanctum')->group(function(){
+    Route::get('/orders', [OrderController::class, 'getAllOrders']);
     Route::get('/orders-report', [OrderController::class, 'getOrderReport']);
     Route::get('order-selected/generate-report', [OrderController::class, 'generateOrderReport']);
     Route::get('/order/{orderId}/ticket', [OrderController::class, 'getOrderInfo']);

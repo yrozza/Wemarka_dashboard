@@ -12,6 +12,7 @@ use App\Models\Product;
 use App\Models\Image;
 use App\Models\Varient;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class VarientController extends Controller
 {
@@ -23,12 +24,41 @@ class VarientController extends Controller
 
     public function index(Product $product)
     {
-        return VarientResource::collection($product->variants()->paginate(15));
+        try {
+            Gate::authorize('viewAny', Varient::class);
+            return VarientResource::collection($product->variants()->paginate(15));
+        } catch (\Exception $e) {
+            // Handle other exceptions
+            return response()->json([
+                'message' => 'An error occurred',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+        
     }
 
 
 
 
+    public function showProductwithVariant(Product $product, Varient $varient)
+    {
+        try {
+            if ($varient->product_id !== $product->id) {
+                abort(404, 'Varient not found for this product.');
+            }
+
+            // Authorization check
+            Gate::authorize('view', $varient);
+
+            return new VarientResource($varient);
+        } catch (\Exception $e) {
+            // Handle other exceptions
+            return response()->json([
+                'message' => 'An error occurred',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 
 
 
@@ -38,7 +68,7 @@ class VarientController extends Controller
     public function store(Request $request, Product $product)
     {
         try {
-            // Validate request data
+            Gate::authorize('create', Varient::class);
             $validatedData = $request->validate([
                 'color' => 'required|string|max:100',
                 'volume' => 'required|string|max:100',
@@ -166,14 +196,16 @@ class VarientController extends Controller
     {
         try {
             // Find the variant by its ID and ensure it belongs to the specified product using query builder
-            $variant = DB::table('varients')
-            ->where('id', $id)
-                ->where('product_id', $product->id)
-                ->first();
 
-            if (!$variant) {
+            $varient = Varient::where('id', $id)
+            ->where('product_id', $product->id)
+            ->first();
+
+            if (!$varient) {
                 return response()->json(['message' => 'Variant not found or does not belong to the specified product'], 404);
             }
+
+            Gate::authorize('update', $varient);
 
             // Validate the incoming request data
             $validatedData = $request->validate([
@@ -198,7 +230,7 @@ class VarientController extends Controller
             // Check if any changes were made by comparing incoming data with existing variant
             $noChangesDetected = true;
             foreach ($dataToUpdate as $key => $value) {
-                if ($variant->{$key} !== $value) {
+                if ($varient->{$key} !== $value) {
                     $noChangesDetected = false;
                     break; // Stop checking if a change is found
                 }
@@ -216,7 +248,7 @@ class VarientController extends Controller
             $shouldRegenerateSKU = false;
 
             foreach ($skuFields as $field) {
-                if (isset($dataToUpdate[$field]) && $dataToUpdate[$field] !== $variant->{$field}) {
+                if (isset($dataToUpdate[$field]) && $dataToUpdate[$field] !== $varient->{$field}) {
                     $shouldRegenerateSKU = true;
                     break;
                 }
@@ -233,11 +265,11 @@ class VarientController extends Controller
                     ->value('Category'); // Retrieve category name from category table
 
                 // Generate SKU with WEMARKA, Category Name, Variant, Color, Volume, and Variant ID
-                $colorPart = strtoupper($dataToUpdate['color'] ?? $variant->color);  // Full color name
-                $volumePart = strtoupper(substr($dataToUpdate['volume'] ?? $variant->volume, 0, 3)); // First 3 letters of volume
-                $variantId = $variant->id;
+                $colorPart = strtoupper($dataToUpdate['color'] ?? $varient->color);  // Full color name
+                $volumePart = strtoupper(substr($dataToUpdate['volume'] ?? $varient->volume, 0, 3)); // First 3 letters of volume
+                $variantId = $varient->id;
                 $skuCode = "WEMARKA-{$categoryName}-" .
-                ($dataToUpdate['varient'] ?? $variant->varient) . "-{$colorPart}-{$volumePart}ML-{$variantId}";
+                ($dataToUpdate['varient'] ?? $varient->varient) . "-{$colorPart}-{$volumePart}ML-{$variantId}";
 
                 $dataToUpdate['Sku_code'] = $skuCode;
             }
@@ -245,9 +277,9 @@ class VarientController extends Controller
             // If cost_price or selling_price is being updated, ensure price and selling price validation
             if (isset($dataToUpdate['cost_price']) || isset($dataToUpdate['Selling_price'])) {
                 // Ensure the selling price is greater than cost_price and price (if they exist)
-                $newCostPrice = $dataToUpdate['cost_price'] ?? $variant->cost_price;
-                $newSellingPrice = $dataToUpdate['Selling_price'] ?? $variant->Selling_price;
-                $newPrice = $dataToUpdate['price'] ?? $variant->price;
+                $newCostPrice = $dataToUpdate['cost_price'] ?? $varient->cost_price;
+                $newSellingPrice = $dataToUpdate['Selling_price'] ?? $varient->Selling_price;
+                $newPrice = $dataToUpdate['price'] ?? $varient->price;
 
                 // Check if selling_price is greater than cost_price and price
                 if ($newSellingPrice <= $newCostPrice) {
@@ -301,6 +333,8 @@ class VarientController extends Controller
                 return response()->json(['message' => 'Variant not found or does not belong to the specified product'], 404);
             }
 
+            Gate::authorize('create' , Image::class);
+
             // Validate incoming request
             $validatedData = $request->validate([
                 'product_images' => 'required|array',
@@ -349,164 +383,50 @@ class VarientController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function selectDestroy($product, Request $request)
-    {
 
+    public function destroySelectedVarients(Request $request, $product)
+    {
         try {
-            // Validate the incoming request to ensure 'variant_ids' is an array of valid variant IDs
+            // ✅ Validate request
             $request->validate([
-                'varient_ids' => 'required|array',
-                'varient_ids.*' => 'exists:varients,id', // Ensure each ID exists in the variants table
+                'varient_ids'   => ['required', 'array'],
+                'varient_ids.*' => ['exists:varients,id'],
             ]);
 
-            // Find all variants for the given product using the provided variant IDs
-            $variants = Varient::where('product_id', $product)
+            // ✅ Fetch the valid varients that belong to the given product
+            $varients = Varient::where('product_id', $product)
                 ->whereIn('id', $request->varient_ids)
                 ->get();
 
-            // Check if variants exist for the given product
-            if ($variants->isEmpty()) {
-                return response()->json([
-                    'message' => 'No variants found for the specified product or variant IDs',
-                ], 404);
+            // ❌ Return error if no valid varients found
+            if ($varients->isEmpty()) {
+                return response()->json(['message' => 'No matching varients found for this product'], 404);
             }
 
-            // Delete all selected variants
-            $variants->each->delete();
+            // ✅ Authorization check (user must be allowed to delete)
+            foreach ($varients as $varient) {
+                Gate::authorize('delete', $varient);
+            }
 
-            // Return a response
-            return response()->json(['message' => 'Variants deleted successfully'], 200);
+            // ✅ Delete varients in a single query
+            Varient::whereIn('id', $varients->pluck('id'))->delete();
+
+            return response()->json(['message' => 'Varients deleted successfully'], 200);
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            return response()->json(['message' => 'Unauthorized'], 403);
         } catch (\Exception $e) {
-            // Handle other exceptions
             return response()->json([
                 'message' => 'An error occurred',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-        
-    }
-
-
-    public function DeleteSelectedvarients(Request $request)
-    {
-        try {
-            // Validate the incoming request to ensure 'variant_ids' is an array of valid variant IDs
-            $request->validate([
-                'varient_ids' => 'required|array',
-                'varient_ids.*' => 'exists:varients,id', // Ensure each ID exists in the variants table
-            ]);
-
-            // Fetch the variants based on provided IDs
-            $variants = Varient::whereIn('id', $request->varient_ids)->get();
-
-            // Check if any variants were found
-            if ($variants->isEmpty()) {
-                return response()->json([
-                    'message' => 'No variants found for the specified IDs',
-                ], 404);
-            }
-
-            // Delete all selected variants
-            $variants->each->delete();
-
-            // Return a response
-            return response()->json(['message' => 'Variants deleted successfully'], 200);
-        } catch (\Exception $e) {
-            // Handle other exceptions
-            return response()->json([
-                'message' => 'An error occurred',
-                'error' => $e->getMessage(),
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }
 
 
+    
 
-    public function updateImage(Request $request, $variantId, $imageId)
-    {
-        try {
-            // Log the incoming request data
-            Log::debug('Incoming request:', [
-                'variantId' => $variantId,
-                'imageId' => $imageId,
-                'request_data' => $request->all()
-            ]);
 
-            // Find the variant by variantId
-            $variant = Varient::find($variantId);
 
-            if (!$variant) {
-                return response()->json(['message' => 'Variant not found.'], 404);
-            }
-
-            // Find the specific image by imageId and variantId
-            $imageRecord = Image::where('id', $imageId)
-                ->where('varient_id', $variantId)
-                ->first();
-
-            // Log the image record details
-            Log::debug('Image Record:', [
-                'image_record' => $imageRecord
-            ]);
-
-            if (!$imageRecord) {
-                return response()->json(['message' => 'Image not found or does not belong to the specified variant.'], 404);
-            }
-
-            // Validate the incoming image
-            $validatedData = $request->validate([
-                'image' => 'required|image|max:2048', // Ensure the file is valid and <= 2MB
-            ]);
-
-            // Check if the file exists in the request
-            if (!$request->hasFile('product_image')) {
-                return response()->json(['message' => 'No file uploaded.'], 400);
-            }
-
-            // Process the new image
-            $newImage = $validatedData['product_image'];
-
-            if ($newImage->isValid()) {
-                // Log the file path and status
-                Log::debug('File is valid. Processing image.', [
-                    'new_image_name' => $newImage->getClientOriginalName(),
-                    'new_image_mime' => $newImage->getMimeType()
-                ]);
-
-                // Delete the old image file from storage
-                $oldImagePath = str_replace(asset('storage/'), '', $imageRecord->image_url);
-                if (Storage::exists('public/variant_images/' . $oldImagePath)) {
-                    Storage::delete('public/variant_images/' . $oldImagePath);
-                    Log::debug('Old image deleted.', ['old_image_path' => $oldImagePath]);
-                }
-
-                // Store the new image
-                $newImagePath = $newImage->store('variant_images', 'public');
-                $newImageUrl = asset('storage/' . $newImagePath);
-
-                // Update the image record in the database
-                $imageRecord->update(['image_url' => $newImageUrl]);
-
-                // Return success response
-                return response()->json([
-                    'message' => 'Image updated successfully!',
-                    'updated_image_url' => $newImageUrl,
-                ], 200);
-            } else {
-                return response()->json(['message' => 'Invalid image provided.'], 422);
-            }
-        } catch (\Exception $e) {
-            // Handle other exceptions and log the error message
-            Log::error('An error occurred while updating the image:', [
-                'error' => $e->getMessage(),
-            ]);
-
-            return response()->json([
-                'message' => 'An error occurred while updating the image.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
 }
 
 

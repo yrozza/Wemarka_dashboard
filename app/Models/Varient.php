@@ -40,4 +40,10 @@ class Varient extends Model
     {
         return $this->hasMany(OrderItem::class);
     }
+
+    public function packages()
+    {
+        return $this->belongsToMany(Package::class, 'package_varient');
+    }
+
 }

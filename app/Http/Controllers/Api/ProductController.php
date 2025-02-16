@@ -185,7 +185,7 @@ class ProductController extends Controller
     public function update(Request $request, Product $product)
     {
         try {
-            Gate::authorize('update', $product);
+            Gate::authorize('update', $product  );
             $validated = $request->validate([
                 'Product_name' => 'required|string|max:255|unique:products,Product_name,' . $product->id,
                 'Product_description' => 'required|string',

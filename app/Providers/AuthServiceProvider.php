@@ -14,18 +14,23 @@ use App\Policies\CartItemPolicy;
 use App\Models\User;
 use App\Models\Area;
 use App\Models\City;
-use App\Models\Employee;
 use App\Models\Shipping;
 use App\Models\Source;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Supplier;
+use App\Models\Varient;
 use App\Policies\AreaPolicy;
 use App\Policies\BrandPolicy;
 use App\Policies\CategoryPolicy;
 use App\Policies\CityPolicy;
 use App\Policies\EmployeePolicy;
+use App\Policies\ImagePolicy;
+use App\Policies\VariantPolicy;
+use App\Models\Image;
+use App\Models\Package;
 use App\Policies\OrderPolicy;
+use App\Policies\PackagePolicy;
 use App\Policies\ShippingCompanyPolicy;
 use App\Policies\SourcePolicy;
 use App\Policies\SupplierPolicy;
@@ -39,10 +44,13 @@ class AuthServiceProvider extends ServiceProvider
         Category::class=>CategoryPolicy::class,
         CartItem::class => CartItemPolicy::class,
         Cart::class => CartPolicy::class,
+        Package::class=>PackagePolicy::class,
+        Image::class=>ImagePolicy::class,
         Order::class => OrderPolicy::class,
         Source::class => SourcePolicy::class,
         Shipping::class => ShippingCompanyPolicy::class,
         Supplier::class=>SupplierPolicy::class,
+        Varient::class=>VariantPolicy::class,
         Area::class => AreaPolicy::class,
     ];
 
