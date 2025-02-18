@@ -24,6 +24,7 @@ return new class extends Migration
             ->after('Stock');
             $table->decimal('Selling_price', 10, 2)->after('price');
             $table->string('weight')->nullable();
+            $table->decimal('cost_price', 10, 2);
             $table->decimal('price', 10, 2);
             $table->string('product_image')->nullable();
             $table->integer('stock')->default(0);

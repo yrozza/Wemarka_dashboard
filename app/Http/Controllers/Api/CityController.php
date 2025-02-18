@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\CityResource;
 use App\Models\City;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Http\Request;
@@ -15,15 +16,20 @@ class CityController extends Controller
      * Display a listing of the resource.
      */
     use AuthorizesRequests;
+
     public function index(Request $request)
     {
-
+        // Authorization check
         if (!Gate::allows('viewAny', City::class)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $cities = City::paginate(10);
+        // Check if the cities data is cached
+        $cities = Cache::remember('cities_page_1', now()->addMinutes(10), function () {
+            return City::paginate(10);
+        });
 
+        // Return the paginated cities as a resource collection
         return CityResource::collection($cities);
     }
 
@@ -71,33 +77,45 @@ class CityController extends Controller
     public function show(Request $request, $id)
     {
         // Authorize before retrieving the city
-
-
-        $city = City::find($id);
-
-        if (!Gate::allows('view', $city)) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
+        $city = Cache::remember("city_{$id}", now()->addMinutes(10), function () use ($id) {
+            return City::find($id);
+        });
 
         if (!$city) {
             return response()->json(['message' => 'City not found'], 404);
         }
 
+        // Authorization check
+        if (!Gate::allows('view', $city)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Return the city as a resource
         return new CityResource($city);
     }
 
-    public function showByName($city_name){
+    public function showByName($city_name)
+    {
+        // Authorize before retrieving the cities
         if (!Gate::allows('viewAny', City::class)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
-        $city = City::where('City_name','LIKE',"%$city_name%")->get();
+
+        // Generate a cache key based on the city name
+        $cacheKey = "city_name_{$city_name}";
+
+        // Attempt to retrieve the city from cache
+        $city = Cache::remember($cacheKey, now()->addMinutes(10), function () use ($city_name) {
+            return City::where('City_name', 'LIKE', "%$city_name%")->get();
+        });
 
         try {
-            if($city->isEmpty()){
+            if ($city->isEmpty()) {
                 return response()->json([
                     'Message' => 'City not found'
-                ],404);
+                ], 404);
             }
+
             return CityResource::collection($city);
         } catch (\Exception $e) {
             // Catch any unexpected errors and return a 500 response with the error message

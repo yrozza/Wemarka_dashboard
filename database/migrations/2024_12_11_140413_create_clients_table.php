@@ -4,6 +4,7 @@ use App\Models\Source;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use App\Models\Area;
+use  App\Models\City;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -17,12 +18,14 @@ return new class extends Migration
             $table->id();
             $table->foreignIdFor(Source::class);
             $table->foreignIdFor(Area::class, 'area_id')->nullable()->constrained()->cascadeOnUpdate()->nullOnDelete();
+            $table->foreignIdFor(City::class,'city_id')->nullable()->constrained()->cascadeOnUpdate()->nullOnDelete();
             $table->string('client_name')->nullable();
             $table->string('client_age')->nullable();
             $table->string('area_name')->nullable();
             $table->string('city_name')->nullable();
             $table->string('client_email')->nullable();
             $table->string('client_phonenumber')->nullable();
+            $table->string('source_link')->nullable(); // Adjust the column type as needed
             $table->timestamps();
         });
         

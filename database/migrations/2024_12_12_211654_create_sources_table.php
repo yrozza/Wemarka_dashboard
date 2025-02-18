@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->String('Source_name')->nullable();
             $table->boolean('Active')->nullable();
+            $table->timestamps();
         });
     }
 
