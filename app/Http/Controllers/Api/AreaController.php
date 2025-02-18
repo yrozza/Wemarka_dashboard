@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AreaResource;
+use Illuminate\Support\Facades\Cache;
 use App\Models\City;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Http\Request;
@@ -14,25 +15,37 @@ class AreaController extends Controller
     /**
      * Display a listing of the resource.
      */
+
+
+
     public function index(Request $request)
     {
         try {
+            // Authorize before retrieving the areas
             if (!Gate::allows('viewAny', Area::class)) {
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
-            // Get paginated areas with their related cities
-            $perPage = $request->query('per_page', 10); // Default 10 per page
-            $areas = Area::with('city')->paginate($perPage);
 
-            // Return paginated resource collection
+            // Define a cache key based on the pagination and request parameters
+            $cacheKey = 'areas_' . $request->query('per_page', 10);
+
+            // Attempt to retrieve the areas from cache or run the query if not cached
+            $areas = Cache::remember($cacheKey, now()->addMinutes(10), function () use ($request) {
+                // Paginate the areas and eager load their related cities
+                return Area::with('city')->paginate($request->query('per_page', 10));
+            });
+
+            // Return the paginated resource collection
             return AreaResource::collection($areas);
         } catch (\Exception $e) {
+            // Catch any unexpected errors and return a 500 response with the error message
             return response()->json([
                 'message' => 'Internal Server Error',
                 'error' => $e->getMessage(),
             ], 500);
         }
     }
+
 
 
 
@@ -92,21 +105,28 @@ class AreaController extends Controller
     public function show($id)
     {
         try {
-            $area = Area::with('city')->find($id);
+            // Cache key for fetching a single area by ID
+            $cacheKey = "area_{$id}";
 
+            // Retrieve the area from the cache or from the database if not cached
+            $area = Cache::remember($cacheKey, now()->addMinutes(10), function () use ($id) {
+                return Area::with('city')->find($id);
+            });
+
+            // Check if the area exists
+            if (!$area) {
+                return response()->json(['message' => 'Area not found'], 404);
+            }
+
+            // Authorization check
             if (!Gate::allows('view', $area)) {
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
-            if (!$area) {
-                return response()->json([
-                    'message' => 'Area not found'
-                ], 404);
-            }
 
-
-            return new AreaResource($area); // Return as a resource
-
+            // Return the area data as a resource
+            return new AreaResource($area);
         } catch (\Exception $e) {
+            // Handle any exceptions that may occur
             return response()->json([
                 'message' => 'Internal Server Error',
                 'error' => $e->getMessage(),
@@ -118,31 +138,37 @@ class AreaController extends Controller
     public function showByName($areaName)
     {
         try {
-            // Use pagination with LIKE search
-            $areas = Area::with('city')
-            ->where('Area_name', 'LIKE', "%$areaName%")
-            ->paginate(10); // Paginate with 10 results per page
+            // Cache key for searching areas by name
+            $cacheKey = "areas_by_name_{$areaName}";
 
+            // Attempt to get the areas from cache or run the query if not cached
+            $areas = Cache::remember($cacheKey, now()->addMinutes(10), function () use ($areaName) {
+                return Area::with('city')
+                ->where('Area_name', 'LIKE', "%$areaName%")
+                ->paginate(10); // Paginate the result set
+            });
+
+            // If no areas are found, return a 404 response
+            if ($areas->isEmpty()) {
+                return response()->json(['message' => 'No matching areas found'], 404);
+            }
+
+            // Authorization check for viewing areas
             if (!Gate::allows('viewAny', Area::class)) {
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
 
-            // If no areas are found, return a 404 response
-            if ($areas->isEmpty()) {
-                return response()->json([
-                    'message' => 'No matching areas found'
-                ], 404);
-            }
-
-            // Return paginated resource response
+            // Return the paginated results as a resource collection
             return AreaResource::collection($areas);
         } catch (\Exception $e) {
+            // Handle any exceptions that may occur
             return response()->json([
                 'message' => 'Internal Server Error',
                 'error' => $e->getMessage(),
             ], 500);
         }
     }
+
 
 
 
