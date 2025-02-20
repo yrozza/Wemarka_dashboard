@@ -17,6 +17,7 @@ return new class extends Migration
             $table->id(); // Primary Key
             $table->foreignIdFor(Cart::class)->constrained()->onDelete('cascade'); // Links to carts table
             $table->foreignIdFor(Varient::class)->constrained()->onDelete('cascade'); // Links to variants table
+            $table->foreignId('package_id')->nullable()->constrained('packages')->onDelete('cascade');
             $table->integer('quantity'); // Quantity of the variant in the cart
             $table->decimal('price', 10, 2); // Price at the time of adding to the cart
             $table->decimal('total_price', 10, 2)->after('price');

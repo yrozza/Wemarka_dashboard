@@ -17,6 +17,12 @@ class OrderItem extends Model
         return $this->belongsTo(Order::class);
     }
 
+    public function package()
+    {
+        return $this->belongsTo(Package::class);
+    }
+
+
     // One OrderItem belongs to one Variant
     public function varient()
     {

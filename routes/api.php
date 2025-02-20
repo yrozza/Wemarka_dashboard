@@ -148,7 +148,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
 
 
-
+Route::middleware('auth:sanctum')->group(function () {
+    Route::apiResource('carts.items', ItemController::class)->scoped([
+        'cart' => 'id',
+        'item' => 'id',
+    ]);
+});
 
 
 
@@ -165,6 +170,13 @@ Route::scopeBindings()->group(function () {
         ]);
         Route::patch('cart-items/{cartItem}', [ItemController::class, 'update']);
 });
+});
+
+
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::patch('/carts/{cart}/package-items/{cartItem}', [ItemController::class, 'updatePackageVariant']);
+    Route::put('/cart/{cart_id}/update-package', [ItemController::class, 'updateCartPackage']);
+
 });
 
 

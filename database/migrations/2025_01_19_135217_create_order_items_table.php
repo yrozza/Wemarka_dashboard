@@ -17,6 +17,7 @@ return new class extends Migration
             $table->id(); // Primary Key
             $table->foreignIdFor(Order::class)->constrained()->onDelete('cascade'); // Links to orders table
             $table->foreignIdFor(Varient::class)->constrained()->onDelete('cascade'); // Links to variants table
+            $table->foreignId('package_id')->nullable()->constrained('packages')->onDelete('cascade');
             $table->integer('quantity'); // Quantity of the variant in the order
             $table->decimal('price', 10, 2); // Price of the variant at the time of purchase
             $table->timestamps(); // created_at, updated_at

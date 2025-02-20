@@ -10,6 +10,7 @@ class CartItem extends Model
     protected $fillable = [
         'cart_id',      // Foreign key to the cart
         'varient_id',   // Foreign key to the variant
+        'package_id',
         'quantity',     // Quantity of the variant
         'price',        // Price of the variant
     ];
@@ -24,6 +25,12 @@ class CartItem extends Model
     {
         return $this->belongsTo(Varient::class);
     }
+    
+    public function package()
+    {
+        return $this->belongsTo(Package::class);
+    }
+
 
     public function product()
     {
